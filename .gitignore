@@ -1,0 +1,19 @@
+# Rstudio artifacts
+*.Rproj
+*.Rproj.user/
+*.Rhistory
+
+# Scratch dirs
+data_in/
+data_working/
+data_out/
+graphics/
+presentations/
+
+# Office files
+*.docx
+*.pptx
+
+# etc
+*.swp
+
