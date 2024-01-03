@@ -9,6 +9,7 @@ data_working/
 data_out/
 graphics/
 presentations/
+scripts/old
 
 # Office files
 *.docx
