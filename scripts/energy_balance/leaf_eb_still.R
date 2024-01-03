@@ -252,28 +252,30 @@ leaf_temperature_isothermal <- function(Ta, Pa, RH, u, gs, SW_dir, SW_dif,
   )
 }
 
-# Example parameters
-eb_envpar <- list(
-  Ta=298,        # Air temperature, K
-  Pa=98,         # Air pressure, kPa
-  RH=60,         # Relative humidity, % (0 - 100)
-  u=2,           # Wind speed m/sec
-  gs=0.4,        # Stomatal conductance mol/m2 sec
-  LW_down=350,   # Downwelling longwave radiation W/m2
-  SW_dir=700,    # Downwelling direct shortwave radiation W/m2
-  SW_dif=150,    # Downwelling diffuse shortwave ardiation W/m2
-  SW_out=60,     # Upwelling shortwave radiation
-  is_sunlit=1,   # Is this leaf in shade? (1/0)
-  illuminance=1  # Relative illuminance of the leaf (0-1)
-)
-
-# Useful constants
-eb_constants <- list(
-  cp=1010,    # Heat capacity of dry air J / kg K
-  Mair=0.029, # Molar mass of dry air kg / mol
-  a_lw=0.98,  # Longwave absorptance
-  a_sw=0.50,  # Shortwave absorptance
-  d=0.01,     # Characteristic dimension of leaves m
-  MWr=0.622,  # Ratio of molar mass of water to dry air
-  l=44.2e3    # Heat of vaporization of water J/mol *at 20 deg C*
-)
+if (sys.nframe() == 0) {
+  # Example parameters
+  eb_envpar <- list(
+    Ta=298,        # Air temperature, K
+    Pa=98,         # Air pressure, kPa
+    RH=60,         # Relative humidity, % (0 - 100)
+    u=2,           # Wind speed m/sec
+    gs=0.4,        # Stomatal conductance mol/m2 sec
+    LW_down=350,   # Downwelling longwave radiation W/m2
+    SW_dir=700,    # Downwelling direct shortwave radiation W/m2
+    SW_dif=150,    # Downwelling diffuse shortwave ardiation W/m2
+    SW_out=60,     # Upwelling shortwave radiation
+    is_sunlit=1,   # Is this leaf in shade? (1/0)
+    illuminance=1  # Relative illuminance of the leaf (0-1)
+  )
+  
+  # Useful constants
+  eb_constants <- list(
+    cp=1010,    # Heat capacity of dry air J / kg K
+    Mair=0.029, # Molar mass of dry air kg / mol
+    a_lw=0.98,  # Longwave absorptance
+    a_sw=0.50,  # Shortwave absorptance
+    d=0.01,     # Characteristic dimension of leaves m
+    MWr=0.622,  # Ratio of molar mass of water to dry air
+    l=44.2e3    # Heat of vaporization of water J/mol *at 20 deg C*
+  )
+}
