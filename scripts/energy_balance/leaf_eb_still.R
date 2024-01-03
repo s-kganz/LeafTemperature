@@ -1,58 +1,5 @@
-#' Net isothermal radiation.
-#'
-#' @param SW_dir Direct downwelling shortwave radiation (W/m2)
-#' @param SW_dif Diffuse downwelling shortwave radiation (W/m2)
-#' @param SW_out Upwelling shortwave radiation (W/m2)
-#' @param LW_down Downwelling longwave radiation (W/m2)
-#' @param Ta Air temperature (K) 
-#' @param is_sunlit Is the leaf in shade? (1/0)
-#' @param illuminance Accessibility of diffuse light (0-1)
-#' @param a_sw Absorptivity of shortwave radiation (0.5)
-#' @param a_lw Absorptivity of longwave radiation (0.98)
-#'
-#' @return Rn, Net isothermal radiation (W/m2)
-#' @export
-#'
-#' @examples
-net_isothermal_radiation <- function(SW_dir, SW_dif, SW_out, LW_down, Ta, G,
-                          a_sw=0.5, a_lw=0.98) {
-  sb <- 5.67e-8
-  SW_net <- SW_dir + SW_dif - SW_out
-  Rn <- a_sw * SW_net + a_lw * (LW_down + G) - a_lw * sb * Ta^4
-}
-
-#' Density of dry air.
-#' @param Ta Air temperature (K)
-#' @param Pa Air pressure (kPa)
-#' @param cp Heat capacity of dry air (J/kg K)
-#' @param M Molar mass of dry air (kg / mol)
-#'
-#' @return rho, air density (kg / m3)
-#' @export
-#'
-#' @examples
-dry_air_density <- function(Ta, Pa, cp=1010, M=0.029) {
-  R <- 8.314 # Univ gas constant
-  Pa_pa <- Pa * 1000 # convert to Pa
-  
-  (Pa_pa * M) / (R * Ta)
-}
-
-#' Molar density of dry air.
-#'
-#' @param Ta Air temperature (K)
-#' @param Pa Air pressure (Pa)
-#' @param cp Heat capacity of dry air (J/kg K)
-#' @param M Molar mass of dry air (kg/mol)
-#'
-#' @return rho_mol, molar density of dry air (mol / m3)
-#' @export
-#'
-#' @examples
-dry_air_molar_density <- function(Ta, Pa, cp=1010, M=0.029) {
-  rho <- dry_air_density(Ta, Pa, cp, M) # kg/m3
-  rho / M # kg / m3 * mol / kg = mol / m3
-}
+source("scripts/energy_balance/air.R")
+source("scripts/energy_balance/radiation.R")
 
 #' Leaf conductance to radiative heat transfer.
 #'
@@ -98,42 +45,6 @@ conductance_boundary_heat_needleleaf <- function(u, d, rho_mol) {
 #' @examples
 conductance_boundary_heat_broadleaf <- function(u, d, rho_mol) {
   0.0105 * rho_mol * (u^0.5 / d^0.5)
-}
-
-#' Psychrometric constant - relates partial pressure of water to
-#' air temperature.
-#'
-#' @param Pa Air pressure (kPa)
-#' @param cp Heat capacity of dry air (J/kg K) 
-#' @param Mwr Ratio of molar mass of water to molar mass of dry air
-#' @param l Heat of vaporization of water (J / mol)
-#'
-#' @return gamma, Psycrometric constant (kPa / K)
-#' @export
-#'
-#' @examples
-psychrometric_constant <- function(Pa, cp=1010, Mwr=0.622, l=40.8e3) {
-  # Convert heat of vaporization to mass basis
-  # 44.2e3 J/mol * 1/0.018 mol/kg = 2.45e6 J/kg
-  l_mass <- l / 0.018
-  cp * Pa / (l_mass * Mwr)
-}
-
-#' Slope of saturation vapor pressure with respect to temperature. Found by
-#' differentiating Tetens's formula.
-#'
-#' @param Ta Air tempertaure (K)
-#'
-#' @return desat, Slope of esat w.r.t. air temperature (kPa / K)
-#' @export
-#'
-#' @examples
-esat_slope <- function(Ta) {
-  a <- 17.27
-  b <- 237.3
-  Ta_c <- Ta - 273.15
-  
-  0.61078 * exp( (a * Ta_c) / (b + Ta_c) ) * a * b / (Ta_c+b)^2
 }
 
 #' Air-leaf temperature decoupling coefficient (Omega). Range is 0-1. When
@@ -189,35 +100,6 @@ latent_heat_equilibrium <- function(Rn, d_esat, gamma, gR, gbH) {
 #' @examples
 total_conductance <- function(gs, gbH) {
   (1/gs + 1/(gbH * 1.08)) ^ -1
-}
-
-#' Saturation vapor pressure from Tetens's formula.
-#'
-#' @param Ta Air temperature (K)
-#'
-#' @return esat, saturation vapor pressure (kPa)
-#' @export
-#'
-#' @examples
-saturation_vapor_pressure <- function(Ta) {
-  Ta_c <- Ta - 273.15
-  esat <- 0.61078 * exp((17.27 * Ta_c) / (Ta_c + 237.3))
-  return(esat)
-}
-
-#' Vapor pressure deficit, the difference between the saturation vapor pressure
-#' and the actual vapor pressure.
-#'
-#' @param Ta Air temperature (K)
-#' @param RH Relative humidity (%, 0-100)
-#'
-#' @return vpd, vapor pressure deficit (kPa)
-#' @export
-#'
-#' @examples
-vapor_pressure_deficit <- function(Ta, RH) {
-  vpd <- saturation_vapor_pressure(Ta) * (1 - RH/100)
-  return(vpd)
 }
 
 #' Imposed latent heat flux. This is the latent heat flux when air temperature
