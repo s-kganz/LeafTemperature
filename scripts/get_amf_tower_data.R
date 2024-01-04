@@ -1,4 +1,4 @@
-# Download all the flux data needed for the multisite synthesis
+# Download tower micrometeorology data from Ameriflux
 library(tidyverse)
 library(amerifluxr)
 
@@ -17,14 +17,20 @@ flux_files <- amf_download_base(
   out_dir = tempdir()
 )
 
-for (f in flux_files) {
+for (i in 1:length(flux_files)) {
   this_f <- amf_read_base(
-    file = f,
+    file = flux_files[i],
     unzip = TRUE,
-    parse_timestamp = TRUE
+    parse_timestamp = FALSE
   ) %>% 
     amf_filter_base() %>%
+    # The timestamp starts in local standard time, convert to UTC so we can
+    # save the file without anything changing.
+    mutate(
+      TIMESTAMP = ymd_hm(TIMESTAMP_START) - hours(sites$utc_offset[i]) + minutes(15)
+    ) %>%
+    select(-TIMESTAMP_START, TIMESTAMP_END) %>%
     write_csv(
-      file.path(outdir, paste0(str_split_i(basename(f), "_", 2), ".csv"))
+      file.path(outdir, paste0(str_split_i(basename(flux_files[i]), "_", 2), ".csv"))
     )
 }

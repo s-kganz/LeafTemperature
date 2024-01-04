@@ -1,15 +1,19 @@
-# This file collects T_canopy data from all NEON sites for validation with the
-# coupled gs-LiDAR model.
+# This file joins tower micrometeorology with T_canopy QC and uncertainty
+# estimates from NEON
+
+# Libraries ----
 
 library(tidyverse)
 library(bigleaf)
 library(lubridate)
 library(amerifluxr)
 library(neonUtilities)
-source("scripts/leaf_eb_still.R")
+source("scripts/energy_balance/leaf_eb_still.R")
 
 var_info  <- amf_var_info()
 site_info <- read_csv("data_working/neon_site_metadata.csv")
+
+# Constants ----
 
 # Simple top-of-canopy measurements that do not require interpolation
 toc_vars <- c("TIMESTAMP", "P", "PA", "LE", "SW_OUT", "LW_IN", "LW_OUT")
@@ -26,6 +30,11 @@ ts_regex    <- "TS_\\d_1_\\d"
 swc_regex   <- "SWC_\\d_\\d_\\d"
 par_regex   <- "PPFD_IN_\\d_\\d_\\d"
 par_toc_regex <- "PPFD_IN_\\d_1_\\d"
+
+# Clean and interpolate tower micrometeorology ----
+# Canopy temperature and micrometorology data are generally not measured
+# at the same point. So we use interpolation to get data for the same location
+# in space.
 
 get_site_tc_data <- function(site, utc_offset) {
   data <- read_csv(file.path("data_working", "neon_flux", str_c(site, ".csv")),
@@ -98,10 +107,6 @@ get_site_tc_data <- function(site, utc_offset) {
     select(all_of(toc_vars), matches(ta_regex), matches(tc_regex),
            matches(mr_regex), matches(ws_regex), matches(par_regex)) %>%
     mutate(
-      # Lubridate reads all timezones as UTC, and Ameriflux supplies data in
-      # local standard time (i.e. ignoring daylight savings). NEON always
-      # uses UTC, so apply the hourly offset to convert the time to UTC.
-      TIMESTAMP = force_tz(TIMESTAMP, "UTC") - hours(utc_offset),
       SW_IN_TOC = rowMeans(data %>% select(matches(sw_in_regex)), na.rm=TRUE),
       PPFD_IN_TOC = rowMeans(data %>% select(matches(par_toc_regex)), na.rm=TRUE),
       G = rowMeans(data %>% select(matches(g_regex)), na.rm=TRUE),
@@ -117,7 +122,7 @@ get_site_tc_data <- function(site, utc_offset) {
     )
   
   data_interp <- data_select %>%
-    # Drop rows that don't have at least two non-NAs for interpolation
+    # Drop observations that don't have at least two non-NAs for interpolation
     filter(
       map_int(tc, ~sum(!is.na(.x))) >= 2,
       map_int(ta, ~sum(!is.na(.x))) >= 2,
@@ -146,6 +151,7 @@ get_site_tc_data <- function(site, utc_offset) {
     ) %>%
     select(-ta, -ws, -mr, -par) %>%
     unnest(tc) %>%
+    # Model blows up if wind == 0 so drop those observations
     filter(ws_interp >= 0)
     
   cat(nrow(data_interp), "TC observations before filtering", "\n")
@@ -159,22 +165,14 @@ get_site_tc_data <- function(site, utc_offset) {
       esat = saturation_vapor_pressure(ta_interp + 273.15),
       rh   = e / esat,
       vpd  = esat - e,
-      # Longwave temperature assumeing emissivity is 0.98
-      T_lw = (LW_OUT / (0.98 * 5.67e-8))^0.25,
       # Clean up the G column
       G = replace_na(G, 0)
     ) %>%
     # Filter to reasonable values of RH and VPD
     filter(rh >= 0, rh <= 1, vpd < 6) %>%
-    # Discard obs where T_CANOPY was more than 10 deg C above longwave temp. This
-    # has the greatest effect on US-xRM and the lower sensor on US-xTE.
-    # filter(t_canopy <= T_lw + 10) %>%
-    # Apply filter as in stomatal conductance modeling so we don't
-    # extrapolate that model to new data
-    filter(
-      month(TIMESTAMP) %in% 6:9, SW_IN_TOC > 50, ta_interp > 5
-    ) %>%
-    # cleanup
+    # Growing season only
+    filter(month(TIMESTAMP) %in% c(5:9)) %>%
+    # Column cleanup
     mutate(
       SITE = site
     ) %>%
@@ -195,10 +193,12 @@ all_amf_data <- bind_rows(lapply(
   }
 ))
 
+# Join NEON QC and uncertainty ----
+
 # Now pull NEON IRBT data to attach QC flag and uncertainty. Join schema
-# is on site ID, timestamp, and z position.
-fileName <- "data_in/neon_token"
-token <- readChar(fileName, file.info(fileName)$size)
+# is on site ID, timestamp, and z position. We keep the tc value from the
+# Ameriflux portal to verify that the join is correct.
+token <- readChar("data_in/neon_token", file.info("data_in/neon_token")$size)
 
 prod <- loadByProduct(
   "DP1.00005.001",
@@ -231,9 +231,10 @@ amf_neon_joined <- all_amf_data %>%
              by=c("SITE_NEON"="siteID", "TIMESTAMP_START"="startDateTime",
                   "z"="zOffset")) %>%
   filter(finalQF == 0) %>%
-  select(-HOR.VER, -bioTempMean, -horizontalPosition, -verticalPosition,
+  select(-HOR.VER, -horizontalPosition, -verticalPosition,
          -TIMESTAMP_START, -finalQF) %>%
-  rename(t_canopy_exp_uncertainty = "bioTempExpUncert") %>%
-  select(TIMESTAMP, SITE, SITE_NEON, t_canopy, t_canopy_exp_uncertainty,
-         everything()) %>%
+  rename(t_canopy_exp_uncertainty = "bioTempExpUncert",
+         t_canopy_neon = "bioTempMean") %>%
+  select(TIMESTAMP, SITE, SITE_NEON, t_canopy, t_canopy_neon, 
+         t_canopy_exp_uncertainty, everything()) %>%
   write_csv("data_out/cross_site_tc_data.csv")
