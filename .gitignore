@@ -18,3 +18,4 @@ scripts/old
 # etc
 *.swp
 
+.Rproj.user
