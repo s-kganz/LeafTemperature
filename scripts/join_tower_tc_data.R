@@ -218,6 +218,8 @@ irbt_data <- prod$IRBT_30_minute %>%
   filter(finalQF == 0) %>%
   mutate(HOR.VER = str_c(horizontalPosition, verticalPosition, sep="."))
 
+# Some vertical positions are duplicated and the zoffsets vary by < 1m. Average
+# these together to silence later warnings.
 irbt_pos <- prod$sensor_positions_00005 %>%
   select(siteID, HOR.VER, zOffset)
 
@@ -226,15 +228,17 @@ irbt_join <- irbt_data %>%
             by=c("siteID", "HOR.VER"))
 
 amf_neon_joined <- all_amf_data %>%
-  mutate(TIMESTAMP_START = TIMESTAMP - minutes(15)) %>%
   inner_join(irbt_join,
-             by=c("SITE_NEON"="siteID", "TIMESTAMP_START"="startDateTime",
+             by=c("SITE_NEON"="siteID", "TIMESTAMP"="startDateTime",
                   "z"="zOffset")) %>%
   filter(finalQF == 0) %>%
-  select(-HOR.VER, -horizontalPosition, -verticalPosition,
-         -TIMESTAMP_START, -finalQF) %>%
+  select(-HOR.VER,
+         -finalQF) %>%
   rename(t_canopy_exp_uncertainty = "bioTempExpUncert",
          t_canopy_neon = "bioTempMean") %>%
   select(TIMESTAMP, SITE, SITE_NEON, t_canopy, t_canopy_neon, 
-         t_canopy_exp_uncertainty, everything()) %>%
-  write_csv("data_out/cross_site_tc_data.csv")
+         t_canopy_exp_uncertainty, everything())
+
+stopifnot(all.equal(amf_neon_joined$t_canopy, amf_neon_joined$t_canopy_neon))
+
+write_csv(amf_neon_joined, "data_out/cross_site_tc_data.csv")
