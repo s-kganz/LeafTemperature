@@ -1,4 +1,4 @@
-source("scripts/animation_util.R")
+source("scripts/animations/animation_util.R")
 
 sensor_positions <- read_csv("data_working/neon_radiometer_sensor_positions.csv") %>%
   filter(str_detect(referenceLocationID, "TOWER"),

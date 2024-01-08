@@ -2,7 +2,7 @@ library(tidyverse)
 library(gganimate)
 library(ggdark)
 library(lidR)
-source("scripts/leaf_eb_still.R")
+source("scripts/energy_balance/leaf_eb_still.R")
 
 theme_set(dark_theme_bw())
 
