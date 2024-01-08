@@ -1,3 +1,6 @@
+# Functions to describe properties of air in energy balance models
+
+source("scripts/energy_balance/constants.R")
 
 #' Density of dry air.
 #' @param Ta Air temperature (K)
@@ -9,7 +12,9 @@
 #' @export
 #'
 #' @examples
-dry_air_density <- function(Ta, Pa, cp=1010, M=0.029) {
+dry_air_density <- function(Ta, Pa, 
+                            cp=eb_constants_$cp,
+                            M=eb_constants_$Mair) {
   R <- 8.314 # Univ gas constant
   Pa_pa <- Pa * 1000 # convert to Pa
   
@@ -27,7 +32,9 @@ dry_air_density <- function(Ta, Pa, cp=1010, M=0.029) {
 #' @export
 #'
 #' @examples
-dry_air_molar_density <- function(Ta, Pa, cp=1010, M=0.029) {
+dry_air_molar_density <- function(Ta, Pa,
+                                  cp=eb_constants_$cp, 
+                                  M=eb_constants_$Mair) {
   rho <- dry_air_density(Ta, Pa, cp, M) # kg/m3
   rho / M # kg / m3 * mol / kg = mol / m3
 }
@@ -44,7 +51,10 @@ dry_air_molar_density <- function(Ta, Pa, cp=1010, M=0.029) {
 #' @export
 #'
 #' @examples
-psychrometric_constant <- function(Pa, cp=1010, Mwr=0.622, l=40.8e3) {
+psychrometric_constant <- function(Pa, 
+                                   cp=eb_constants_$cp, 
+                                   Mwr=eb_constants_$Mwr,
+                                   l=eb_constants_$l) {
   # Convert heat of vaporization to mass basis
   # 44.2e3 J/mol * 1/0.018 mol/kg = 2.45e6 J/kg
   l_mass <- l / 0.018

@@ -1,3 +1,7 @@
+# Within-canopy absorbed radiation models from Wang and Leuning (1998)
+
+source("scripts/energy_balance/constants.R")
+
 #' Net isothermal radiation.
 #'
 #' @param SW_dir Direct downwelling shortwave radiation (W/m2)
@@ -107,7 +111,7 @@ absorbed_longwave_radiation <- function(Ta, l, L,
   )
   
   # Absorbed radiation
-  sigma <- 5.67e-8 # SB const
+  sigma <- eb_constants_$sb # SB const
   q_up <- e_up * sigma * (Ta^4)
   q_down <- e_down * sigma * (Ta^4)
   q_net <- q_up - q_down
