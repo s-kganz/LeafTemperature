@@ -135,3 +135,18 @@ latent_heat_imposed <- function(gtot, vpd, Pa, l=eb_constants_$l) {
 latent_heat <- function(omega, le_eq, le_imp) {
   omega * le_eq + (1 - omega) * le_imp
 }
+
+#' Sensible heat flux between a leaf and its boundary layer. Flux is multiplied
+#' by 2 since both sides of leaf participate in heat transfer.
+#'
+#' @param gbH Leaf boundary layer conductance to heat transfer
+#' @param Tl Leaf temperature (K)
+#' @param Ta Air temperature (K)
+#'
+#' @return H, sensible heat flux (W/m2)
+#' @export
+#'
+#' @examples
+sensible_heat <- function(gbH, Tl, Ta) {
+  2 * gbH * eb_constants_$cp * eb_constants_$Mair * (Tl - Ta)
+}

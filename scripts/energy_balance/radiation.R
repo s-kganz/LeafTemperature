@@ -20,9 +20,14 @@ source("scripts/energy_balance/constants.R")
 #' @examples
 net_isothermal_radiation <- function(SW_dir, SW_dif, SW_out, LW_down, Ta, G,
                                      a_sw=0.5, a_lw=0.98) {
-  sb <- 5.67e-8
+  sb <- eb_constants_$sb
   SW_net <- SW_dir + SW_dif - SW_out
   Rn <- a_sw * SW_net + a_lw * (LW_down + G) - a_lw * sb * Ta^4
+}
+
+net_nonisothermal_radiation <- function(SW_dn, LW_dn, Tl,
+                                        a_sw=0.5, a_lw=0.98) {
+  (SW_dn * a_sw) + (LW_dn * a_lw) - (a_lw * eb_constants_$sb * Tl^4)
 }
 
 #' Absorbed shortwave radiation within a tree canopy. Comes from Wang and
@@ -35,7 +40,7 @@ net_isothermal_radiation <- function(SW_dir, SW_dif, SW_out, LW_down, Ta, G,
 #' @param kd Attenuation coefficient for black leaves under diffuse radiation
 #' @param kb_real Empirical attenuation coefficient under direct radiation
 #' @param kd_real Empirical attenuation coefficient under diffuse radiation
-#' @param s Leaf scattering coefficient
+#' @param s Leaf scattering coefficient = 1 - absorptance (0-1)
 #' @param rho_b Canopy reflectance coefficient for direct radiation
 #' @param rho_d Canopy reflectance coefficient for diffuse radiation
 #' @param aslist Return partitioned sun/shade fluxes as a list?
@@ -132,6 +137,53 @@ absorbed_longwave_radiation <- function(Ta, l, L,
   } else {
     return(q_net)
   }
+}
+
+#' Downwelling longwave radiation. This essentially takes the same approach
+#' as the version from Wang and Leuning implemented above.
+#'
+#' @param Ta Air temperature (K)
+#' @param l Cumulative leaf area index from top of canopy (m2 / m2)
+#' @param L Total leaf area index for site
+#' @param ef Emissivity of foliage
+#' @param ea Effective emissivity of the sky
+#' @param es Emissivity of the soil
+#' @param kb Attenuation coefficient for black leaves under beam radiation
+#' @param kd Attenuation coefficient for black leaves under diffuse radiation
+#'
+#' @return L_dn, downwelling longwave radiation
+#' @export
+#'
+#' @examples
+downwelling_longwave_radiation <- function(Ta, l, L,
+                                           kb, ea, ef=0.95, es=0.9,
+                                           kd=0.8) {
+  # Effective emissivity of downwelling radiation
+  e_down <- (
+    ef -
+      (ef - ea) * exp(-kd * l) +
+      (1 - ef) * (1 - exp(-kd * l)) * (ef - (ef - es) * exp(-kd * (L - l)))
+  )
+  
+  return(
+    eb_constants_$sb * e_down * Ta^4
+  )
+}
+
+#' Outgoing (upwelling) longwave radiation from a leaf. This version just models
+#' the leaf as a blackbody since the upwelling component from Wang and Leuning
+#' (1998) is essentially equivalent to this. The flux is doubled because both
+#' sides of the leaf participate in heat transfer.
+#'
+#' @param Tl Leaf temperature (K)
+#' @param ef Effective foliage emissivity (0-1)
+#'
+#' @return L_up, upwelling longwave radiation
+#' @export
+#'
+#' @examples
+outgoing_longwave_radiation <- function(Tl, ef=0.98) {
+  2 * ef * eb_constants_$sb * Tl^4
 }
 
 if (sys.nframe() == 0) {
