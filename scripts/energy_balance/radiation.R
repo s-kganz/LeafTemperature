@@ -25,9 +25,20 @@ net_isothermal_radiation <- function(SW_dir, SW_dif, SW_out, LW_down, Ta, G,
   Rn <- a_sw * SW_net + a_lw * (LW_down + G) - a_lw * sb * Ta^4
 }
 
-net_nonisothermal_radiation <- function(SW_dn, LW_dn, Tl,
-                                        a_sw=0.5, a_lw=0.98) {
-  (SW_dn * a_sw) + (LW_dn * a_lw) - (a_lw * eb_constants_$sb * Tl^4)
+#' Net radiation, but allowing for nonisothermal conditions.
+#'
+#' @param SW_abs Absorbed downwelling shortwave radiation (W/m2)
+#' @param LW_abs_dn Absorbed downwelling longwave radiation (W/m2)
+#' @param Tl Leaf temperature (K)
+#' @param a_sw Leaf absorptance to shortwave radiation (0-1)
+#' @param a_lw Leaf absorptance to longwave radiation (0-1)
+#'
+#' @return Rnet, net radiation (W/m2)
+#' @export
+#'
+#' @examples
+net_nonisothermal_radiation <- function(SW_abs, LW_abs_dn, Tl, a_lw=0.98) {
+  SW_abs + LW_abs_dn - (a_lw * eb_constants_$sb * Tl^4)
 }
 
 #' Absorbed shortwave radiation within a tree canopy. Comes from Wang and
@@ -140,7 +151,8 @@ absorbed_longwave_radiation <- function(Ta, l, L,
 }
 
 #' Downwelling longwave radiation. This essentially takes the same approach
-#' as the version from Wang and Leuning implemented above.
+#' as the version from Wang and Leuning implemented above but only calculates
+#' the downwelling component.
 #'
 #' @param Ta Air temperature (K)
 #' @param l Cumulative leaf area index from top of canopy (m2 / m2)
@@ -155,7 +167,7 @@ absorbed_longwave_radiation <- function(Ta, l, L,
 #' @export
 #'
 #' @examples
-downwelling_longwave_radiation <- function(Ta, l, L,
+absorbed_downwelling_longwave_radiation <- function(Ta, l, L,
                                            kb, ea, ef=0.95, es=0.9,
                                            kd=0.8) {
   # Effective emissivity of downwelling radiation
@@ -166,7 +178,8 @@ downwelling_longwave_radiation <- function(Ta, l, L,
   )
   
   return(
-    eb_constants_$sb * e_down * Ta^4
+    # Multiply by 2 because both sides of the leaf receive this heat flux.
+    2 * eb_constants_$sb * e_down * Ta^4
   )
 }
 
