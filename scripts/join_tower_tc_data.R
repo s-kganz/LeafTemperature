@@ -16,8 +16,8 @@ site_info <- read_csv("data_working/neon_site_metadata.csv")
 # Constants ----
 
 # Simple top-of-canopy measurements that do not require interpolation
-toc_vars <- c("TIMESTAMP", "P", "PA", "LE", "SW_OUT", "LW_IN", "LW_OUT", 
-              "USTAR")
+toc_vars <- c("TIMESTAMP", "P", "PA", "LE", "SW_DIF", "SW_OUT", "LW_IN", 
+              "LW_OUT", "USTAR")
 
 # Regexes to collect variables in replicate or in a vertical profile
 sw_in_regex <- "SW_IN_\\d_1_\\d"
