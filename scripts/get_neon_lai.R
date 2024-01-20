@@ -17,25 +17,40 @@ make_darktable_command <- function(input, output) {
   paste("bash -c ", "'darktable-cli ", input, " ", output, "'", sep='')
 }
 
-calculate_dhp_lai <- function(url, verbose=FALSE, ...) {
+download_convert_dhp <- function(url, verbose=FALSE, ...) {
   dhp_file1 <- gsub("\\\\", "/", tempfile(fileext=".NEF", tmpdir="data_working"))
   dhp_file2 <- gsub("\\\\", "/", tempfile(fileext=".jpg", tmpdir="data_working"))
   
   curl_command <- make_curl_command(url, dhp_file1)
   dark_command <- make_darktable_command(dhp_file1, dhp_file2)
   
-  if (verbose) {
-    #cat(curl_command, "\n")
-    #cat(dark_command, "\n")
-  }
-  
-  #if (verbose) {cat("Downloading...")}
+  if (verbose) {cat("Downloading...\n", curl_command, "\n")}
   system(curl_command, ignore.stdout = TRUE, show.output.on.console = FALSE)
-  #if (verbose) {cat("Converting to jpg...\n")}
-  system(dark_command, ignore.stdout = TRUE, show.output.on.console = FALSE)
+  if (verbose) {cat("Converting to jpg...\n", dark_command, "\n")}
+  system(dark_command, ignore.stdout = FALSE, show.output.on.console = TRUE)
+  
+  unlink(dhp_file1)
+  
+  return(dhp_file2)
+}
+
+calculate_binarized_lai <- function(dhp_bw, lens="Nikkor-10.5",
+                                    display=FALSE, nrings=5, nseg=8, ...) {
+  
+  dhp_gap <- gapfrac_fisheye(dhp_bw, lens="Nikkor-10.5", display=FALSE,
+                             nrings=5, nseg=8)
+  
+  dhp_lai <- canopy_fisheye(dhp_gap)
+  
+  return(c(dhp_lai, ...))
+}
+
+calculate_dhp_lai_auto <- function(url, verbose=FALSE, ...) {
+  
+  dhp_file <- download_convert_dhp(url, verbose=verbose)
   
   #if (verbose) {cat("Loading image...")}
-  dhp <- import_fisheye(dhp_file2,
+  dhp <- import_fisheye(dhp_file,
                         circular=FALSE,
                         display=FALSE,
                         message=FALSE)
@@ -45,25 +60,53 @@ calculate_dhp_lai <- function(url, verbose=FALSE, ...) {
                              zonal=FALSE, manual=NULL,
                              display=FALSE)
   
-  #if (verbose) {cat("Calculate gap fraction...")}
-  dhp_gap <- gapfrac_fisheye(dhp_bw, lens="Nikkor-10.5", display=FALSE,
-                             nrings=5, nseg=8)
   
-  #if (verbose) {cat("Final LAI calculation...\n")}
-  dhp_lai <- canopy_fisheye(dhp_gap)
+  result <- calculate_binarized_lai(dhp_bw, ...)
   
-  unlink(dhp_file1)
-  unlink(dhp_file2)
+  unlink(dhp_file)
   
-  if (verbose) {
-    cat("L =", dhp_lai$L, "\n")
-    cat("Le =", dhp_lai$Le, "\n")
-  }
-  
-  return(
-    c(dhp_lai, ...)
-  )
+  return(result)
 } 
+
+calculate_dhp_lai_manual <- function(url, verbose=FALSE, ...) {
+  dhp_file <- download_convert_dhp(url, verbose=verbose)
+  
+  dhp <- import_fisheye(dhp_file,
+                        circular=FALSE,
+                        display=FALSE,
+                        message=FALSE)
+  
+  thresh <- as.numeric(autothresholdr::auto_thresh(
+    round(as.matrix(dhp)), method="Otsu"
+  ))
+  dhp_bw <- binarize_fisheye(dhp, manual=thresh, display=FALSE)
+  par(mfrow=c(1, 2))
+  while (TRUE) {
+    cat("Current thresh:", thresh, "\n")
+    dhp_bw <- binarize_fisheye(dhp, manual=thresh, display=FALSE)
+    
+    plot(dhp, col=grey.colors(50), main="Original")
+    plot(dhp_bw, col=grey.colors(2), main="Thresholded")
+    
+    inp <- readline("[A]ccept, [R]eject, or input new value: ")
+    
+    if (inp == "A") {break}
+    if (inp == "R") {return(list(...))}
+    
+    newinp <- suppressWarnings(as.numeric(inp))
+    
+    if (!is.na(newinp)) {
+      thresh <- newinp
+    }
+  }
+  par(mfrow=c(1, 1))
+  
+  result <- calculate_binarized_lai(dhp_bw, ...)
+  
+  unlink(dhp_file)
+  
+  return(result)
+}
 
 sites <- read_csv("data_working/neon_site_metadata.csv") %>% pull(site_neon)
 
@@ -80,11 +123,12 @@ dhp_table <- dhp_product$dhp_perimagefile %>%
   filter(imageType == "overstory",
          cameraOrientation == "upward") %>%
   mutate(year = year(startDate)) %>%
-  group_by(siteID, year) %>%
-  # Sample at least 10 samples from each group
+  filter(year >= 2019) %>%
+  group_by(siteID) %>%
+  # Sample at least 10 images from each site
   slice(sample(min(10, n())))
 
-write_csv(dhp_table, "data_out/neon_lai_metadata_sample.csv")
+write_csv(dhp_table, "data_out/neon_sampled_dhp_images.csv")
 
 neon_lai_list <- lapply(
   1:nrow(dhp_table), function(i) {
@@ -98,12 +142,29 @@ neon_lai_list <- lapply(
     cat(url, "\n")
     
     tryCatch(
-      calculate_dhp_lai(url, verbose=TRUE, site=site, year=year, srcurl=url),
+      calculate_dhp_lai_manual(url, verbose=TRUE, site=site, year=year, srcurl=url),
       error = function(e) list(site=site, year=year, srcurl=url)
     )
   }
 )
 
-neon_lai <- bind_rows(neon_lai_list)
+neon_lai_list_filter <- neon_lai_list[lapply(neon_lai_list, class) == "list"]
+neon_lai <- bind_rows(neon_lai_list_filter)
 
-write_csv(neon_lai, "data_out/neon_lai.csv")
+median_lai <- neon_lai %>% group_by(site) %>% summarize(L_dhp = median(L))
+
+# Compare the DHP-derived LAI with other estimates in the literature
+known_lais <- read_csv("data_working/neon_site_metadata.csv") %>%
+  select(site_neon, lai) %>% filter(!is.na(lai)) %>%
+  left_join(median_lai, by=c("site_neon"="site"))
+
+correction_factor <- known_lais %>%
+  # Geometric mean error ratio
+  mutate(error_ratio = lai / L_dhp) %>%
+  pull(error_ratio) %>%
+  log() %>% mean() %>% exp()
+
+neon_lai_corrected <- median_lai %>%
+  mutate(L_dhp_corrected = L_dhp * correction_factor)
+
+write_csv(neon_lai_corrected, "data_out/neon_sampled_dhp_lai.csv")
