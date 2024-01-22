@@ -90,13 +90,9 @@ flux_final <- foreach(site=names(flux_clean), data=flux_clean,
   {
     data_clean <- data %>%
       select(all_of(vars)) %>%
-      mutate(site=site) %>%
-      filter(qfqm.fluxH2o.nsae.qfFinl == 0,
-             qfqm.fluxCo2.nsae.qfFinl == 0,
-             !is.nan(data.fluxCo2.nsae.flux),
-             !is.nan(data.fluxH2o.nsae.flux))
+      mutate(site=site)
     
-    cat("\t", site, "\t", nrow(data_clean), "\n")
+    cat("\t", site, "\t", sum(data_clean$qfqm.fluxCo2.nsae.qfFinl == 0), "\n")
     
     return(data_clean)
   }
