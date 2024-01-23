@@ -97,4 +97,4 @@ flux_final <- foreach(site=names(flux_clean), data=flux_clean,
     return(data_clean)
   }
 
-write_csv(flux_final, "data_out/cross_site_flux_qc.csv")
+write_csv(flux_final, "data_out/cross_site_flux.csv")
