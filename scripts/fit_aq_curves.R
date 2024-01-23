@@ -7,10 +7,7 @@ library(tidyverse)
 library(photosynthesis)
 
 # Read/prepare data ----
-flux <- read_csv("data_out/cross_site_flux_qc.csv") %>%
-  select(site, timeBgn, data.fluxCo2.nsae.flux) %>%
-  # Discard unreasonable values
-  filter(data.fluxCo2.nsae.flux > -50, data.fluxCo2.nsae.flux < 20)
+flux <- read_csv("data_out/cross_site_flux_partition_qc.csv")
 
 tower <- read_csv("data_out/cross_site_tc_data.csv") %>%
   filter(z == zmax) %>%
@@ -21,23 +18,41 @@ flux_tower_join <- flux %>%
              by=c("timeBgn"="TIMESTAMP", "site"="SITE_NEON")) %>%
   # Very strange values when shortwave flux is near zero, drop.
   # Observations when friction velocity is low can be biased, drop.
-  filter(USTAR > 0.4, SW_IN_TOC > 50) %>%
-  # Model fitting only works when the curve is downward-opening. Invert the
-  # flux value to account for that.
-  mutate(A = -data.fluxCo2.nsae.flux)
+  filter(SW_IN_TOC > 50) %>%
+  mutate(.A = -data.fluxCo2.nsae.flux,
+         .Qabs = SW_IN_TOC)
 
 # Plot raw data ----
-ggplot(flux_tower_join, aes(x=SW_IN_TOC, y=A)) +
+ggplot(flux_tower_join, aes(x=.Qabs, y=.A)) +
   geom_point(alpha=0.1) +
   facet_wrap(~ site, scales="free_y") +
   labs(x="Top-of-canopy shortwave (W / m2)",
-       y="Canopy photosynthesis (umol CO2 / m2 / s")
+       y="Canopy photosynthesis (umol CO2 / m2 / s") +
+  theme_bw()
 
 # Fit models ----
 fits <- flux_tower_join %>%
   split(~ site) %>%
-  map(fit_photosynthesis, .photo_fun="aq_response",
-      .vars=list(.A=A, .Q=SW_IN_TOC), .method="ls") %>%
+  map(
+    # The default parameter bounds lead to numerical instability so we fit the
+    # model manually with better constraints. The defaults seem to allow for
+    # cases where the data doesn't include the asymptote. We always have the
+    # asymptote so we can constrain a little more.
+    function(.data) {
+      minpack.lm::nlsLM(
+        data = .data, 
+        .A ~ marshall_biscoe_1980(Q_abs = .data[[".Qabs"]], k_sat, phi_J, theta_J) - Rd,
+        # Attempt to estimate starting parameters
+        start = photosynthesis:::get_init_aq_response(.data),
+        # Set lower limits
+        lower = c(min(.data[[".A"]]), 0, 0, 0),
+        # set upper limits
+        upper = c(2 * max(.data[[".A"]]), 0.5, 0.99, 5),
+        # set max iterations for curve fitting
+        control = nls.lm.control(maxiter = 100)
+      )
+    }
+  ) %>%
   map(coef) %>%
   map(t) %>%
   map(as.data.frame) %>%
@@ -60,7 +75,7 @@ fit_pred <- fits %>%
   select(site, A_pred) %>% unnest(A_pred)
 
 ggplot(NULL) +
-  geom_point(mapping=aes(x=SW_IN_TOC, y=A), data=flux_tower_join, alpha=0.1) +
+  geom_point(mapping=aes(x=.Qabs, y=.A), data=flux_tower_join, alpha=0.1) +
   geom_line(mapping=aes(x=Q, y=A, color="Fit"), data=fit_pred, lwd=1) +
   facet_wrap(~ site, scales="free_y") +
   labs(x="Top-of-canopy shortwave (W / m2)",
