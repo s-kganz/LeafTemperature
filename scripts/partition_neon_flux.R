@@ -84,7 +84,7 @@ site_meta <- read_csv("data_working/neon_site_metadata.csv")
 all_flux <- read_csv("data_out/cross_site_flux.csv") %>%
   # N.b. can't drop any rows here otherwise REddyProc complains about non-
   # equidistant time steps
-  select(site, timeBgn, data.fluxCo2.nsae.flux, qfqm.fluxCo2.nsae.qfFinl) %>%
+  select(-timeEnd) %>%
   mutate(year = year(timeBgn)) %>%
   group_by(site, year) %>%
   group_split()
@@ -130,9 +130,9 @@ processed_flux_df <- processed_flux[lapply(processed_flux, class) == "data.frame
 
 processed_flux_df_qc <- processed_flux_df %>%
   # Select only high-quality flux measurements
-  filter(qfqm.fluxCo2.nsae.qfFinl == 0) %>%
+  filter(qfqm.fluxCo2.nsae.qfFinl == 0, qfqm.fluxH2o.nsae.qfFinl == 0) %>%
   # Drop years where partitioning failed
-  drop_na() %>%
+  filter(!is.na(R_ref_U50)) %>%
   # Drop observations where modeled partitioning does not match measured NEE
   mutate(NEE_model = Reco_U50 - GPP_U50_f,
          reldiff = (NEE_model - data.fluxCo2.nsae.flux) / data.fluxCo2.nsae.flux) %>%
