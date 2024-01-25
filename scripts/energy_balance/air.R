@@ -53,7 +53,7 @@ dry_air_molar_density <- function(Ta, Pa,
 #' @examples
 psychrometric_constant <- function(Pa, 
                                    cp=eb_constants_$cp, 
-                                   Mwr=eb_constants_$Mwr,
+                                   Mwr=eb_constants_$MWr,
                                    l=eb_constants_$l) {
   # Convert heat of vaporization to mass basis
   # 44.2e3 J/mol * 1/0.018 mol/kg = 2.45e6 J/kg
