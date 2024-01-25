@@ -150,3 +150,19 @@ latent_heat <- function(omega, le_eq, le_imp) {
 sensible_heat <- function(gbH, Tl, Ta) {
   2 * gbH * eb_constants_$cp * eb_constants_$Mair * (Tl - Ta)
 }
+
+#' Empirical model of stomatal conductance based on Medlyn et al. (2011).
+#'
+#' @param A Net photosynthesis (umol CO2 / m^2 s)
+#' @param VPD Vapor pressure deficit (kPa)
+#' @param CO2 Atmospheric CO2 concentration (umol CO2 / mol air == ppm) 
+#' @param g1 Slope parameter (kPa^0.5, usually in range 1-10)
+#' @param g0 Intercept parameter (mol / m^2 s, usually set to 0)
+#'
+#' @return
+#' @export
+#'
+#' @examples
+medlyn_gs <- function(A, VPD, CO2, g1, g0=0) {
+  g0 + (1 + g1 / sqrt(VPD)) * (A / CO2)
+}
