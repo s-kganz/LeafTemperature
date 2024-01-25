@@ -4,7 +4,9 @@
 
 library(lidR)
 library(tidyverse)
+library(amerifluxr)
 
+# Prepare site-level LAIs ----
 site_lai <- read_csv("data_out/neon_sampled_dhp_lai.csv")
 
 # If there is a prior estimate of LAI in the literature, use it. Otherwise,
@@ -15,15 +17,68 @@ site_info <- read_csv("data_working/neon_site_metadata.csv") %>%
     lai_best = ifelse(is.na(lai), L_dhp_corrected, lai)
   )
 
-tc_data <- read_csv("data_out/cross_site_tc_data.csv") %>%
-  mutate(proportion_diffuse = SW_DIF / (SW_IN_TOC + SW_DIF),
-         proportion_diffuse = pmin(pmax(proportion_diffuse, 0), 1))
+# Prepare light attenuation data ----
+tower_files <- list.files("data_working/neon_flux", pattern="*.csv",
+                          full.names=TRUE)
 
+measure_heights <- amf_var_info()
+
+# For each PAR observation we need to know the following:
+# - What height was it measured at?
+# - What was the PPFD value for this observation?
+# - What was the TOC shortwave flux?
+# - What proportion of incoming shortwave was diffuse?
+cat("Preparing PAR attenuation data...")
+tower_toc_rad <- lapply(tower_files, function(file) {
+  # Extract site information from filename
+  site_amf <- str_remove(basename(file), ".csv")
+  site_neon <- site_info$site_neon[match(site_amf, site_info$site_ameriflux)]
+  cat("\t", site_neon, "\n")
+  
+  # Open tower observations
+  this_tower <- read_csv(file, col_types=cols())
+  
+  # Get measurement heights for this tower
+  this_heights <- measure_heights %>% filter(Site_ID == site_amf)
+  sw_vars <- grep("SW_IN_1_1_\\d", names(this_tower), value=TRUE)
+  ppfd_vars <- grep("PPFD_IN_\\d_\\d_\\d", names(this_tower), value=TRUE)
+  ppfd_z <- this_heights %>%
+    filter(Variable %in% ppfd_vars) %>% 
+    select(Variable, Height)
+  
+  
+  this_tower %>%
+    mutate(
+      # Attach site information for later
+      SITE_NEON = site_neon,
+      # Compute top of canopy values
+      SW_IN_TOC = rowMeans(this_tower %>% select(all_of(sw_vars)), 
+                           na.rm=TRUE),
+      PPFD_IN_TOC = PPFD_IN_1_1_1,
+      proportion_diffuse = SW_DIF / (SW_IN_TOC + SW_DIF),
+      proportion_diffuse = pmin(pmax(proportion_diffuse, 0), 1)
+    ) %>%
+    # Drop observations without TOC values and values at night
+    filter(!is.nan(SW_IN_TOC), !is.na(PPFD_IN_TOC), SW_IN_TOC > 100) %>%
+    # Drop unnecessary columns
+    select(SITE_NEON, PPFD_IN_TOC, proportion_diffuse, 
+           all_of(ppfd_vars)) %>%
+    # Pivot PAR observations to join in measurement heights
+    pivot_longer(all_of(ppfd_vars), 
+                 names_to = "ppfd_variable", values_to="ppfd_value") %>%
+    left_join(ppfd_z, by=c("ppfd_variable"="Variable")) %>%
+    # Cleanup
+    rename(ppfd_z = Height) %>%
+    filter(!is.na(ppfd_value))
+  
+}) %>% bind_rows()
+
+# Fit LiDAR attenuation constants ----
 fit_lidar_constants <- function(site, site_lai, zmax=NA, zmin=1) {
   # Z where cumulative LAI == total LAI and measurement height of Io
   if (is.na(zmax)) {
-    zmax <- tc_data %>% filter(SITE_NEON == site) %>% 
-      pull(z) %>% max() %>% ceiling()
+    zmax <- tower_toc_rad %>% filter(SITE_NEON == site) %>% 
+      pull(ppfd_z) %>% max() %>% ceiling()
   }
   
   las <- readLAS(file.path(
@@ -44,15 +99,14 @@ fit_lidar_constants <- function(site, site_lai, zmax=NA, zmin=1) {
   # Now calculate transmission profile through the canopy under direct and
   # diffuse conditions. For each z, calc geometric mean transmittance to that 
   # point in the canopy.
-  tc_site <- tc_data %>% filter(SITE_NEON == site, SW_IN_TOC > 100) %>%
-    select(TIMESTAMP, PPFD_IN_TOC, z, zmax, par_interp, proportion_diffuse)
+  this_tower_toc_rad <- tower_toc_rad %>% filter(SITE_NEON == site)
   
-  iv_io_df <- tc_site %>%
-    mutate(iv = par_interp,
+  iv_io_df <- this_tower_toc_rad %>%
+    mutate(iv = ppfd_value,
            io = PPFD_IN_TOC,
            proportion_diffuse_bin = round(proportion_diffuse, digits=1)) %>%
     mutate(iv_io = iv / io) %>%
-    group_by(z, proportion_diffuse_bin) %>%
+    group_by(ppfd_z, proportion_diffuse_bin) %>%
     summarize(
       iv_io_mean = suppressWarnings(log(iv_io)) %>% median(na.rm=TRUE) %>% exp(),
       # https://en.wikipedia.org/wiki/Geometric_standard_deviation
@@ -60,7 +114,7 @@ fit_lidar_constants <- function(site, site_lai, zmax=NA, zmin=1) {
         mean(na.rm=TRUE) %>% sqrt() %>% exp()
     ) %>%
     drop_na() %>%
-    mutate(cum_lai = approx(lad_profile$z, lad_profile$cum_lai, z, rule=2)$y,
+    mutate(cum_lai = approx(lad_profile$z, lad_profile$cum_lai, ppfd_z, rule=2)$y,
            site = site)
   
   # Force the y-intercept at log(iv_io) = 0
@@ -116,7 +170,7 @@ ggplot(iv_io_data, aes(x=cum_lai, y=iv_io_mean)) +
   facet_wrap(~ site, scales="free") +
   labs(x="Cumulative LAI", y="Proportion available light",
        color="Proportion diffuse light", name="") +
-  scale_y_log10()
+  scale_y_log10() + theme_bw()
 
 write_csv(lidar_constants_df, "data_out/neon_lidar_constants.csv")
 

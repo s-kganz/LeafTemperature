@@ -8,13 +8,27 @@ library(photosynthesis)
 
 # Read/prepare data ----
 flux <- read_csv("data_out/cross_site_flux_partition_qc.csv")
+meta <- read_csv("data_working/neon_site_metadata.csv")
 
-tower <- read_csv("data_out/cross_site_tc_data.csv") %>%
-  filter(z == zmax) %>%
-  select(TIMESTAMP, SITE_NEON, SW_IN_TOC, PPFD_IN_TOC, USTAR)
+tower_files <- list.files("data_working/neon_flux", pattern="*.csv",
+                          full.names=TRUE)
+
+tower_toc_rad <- lapply(tower_files, function(file) {
+  site_amf <- str_remove(basename(file), ".csv")
+  site_neon <- meta$site_neon[match(site_amf, meta$site_ameriflux)]
+  this_tower <- read_csv(file, col_types=cols())
+  
+  this_tower %>%
+    mutate(
+      SITE_NEON = site_neon,
+      SW_IN_TOC = rowMeans(this_tower %>% select(matches("SW_IN_1_1_\\d")), 
+                           na.rm=TRUE)
+    ) %>%
+    select(TIMESTAMP, SITE_NEON, SW_IN_TOC)
+}) %>% bind_rows()
 
 flux_tower_join <- flux %>%
-  inner_join(tower,
+  inner_join(tower_toc_rad,
              by=c("timeBgn"="TIMESTAMP", "site"="SITE_NEON")) %>%
   # Very strange values when shortwave flux is near zero, drop.
   # Observations when friction velocity is low can be biased, drop.
