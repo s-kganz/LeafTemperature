@@ -165,6 +165,9 @@ correction_factor <- known_lais %>%
   log() %>% mean() %>% exp()
 
 neon_lai_corrected <- median_lai %>%
-  mutate(L_dhp_corrected = L_dhp * correction_factor)
+  # Very sparse ecosystems give an LAI < 1, but a value this low doesn't really
+  # make sense for the energy balance model. Consider the LAI = 1 system to be
+  # a section of forest where there are enough trees to yield a meaningful LAI.
+  mutate(L_dhp_corrected = pmax(1, L_dhp * correction_factor))
 
 write_csv(neon_lai_corrected, "data_out/neon_sampled_dhp_lai.csv")
