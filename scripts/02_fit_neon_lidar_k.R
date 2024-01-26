@@ -55,7 +55,7 @@ tower_toc_rad <- lapply(tower_files, function(file) {
       SW_IN_TOC = rowMeans(this_tower %>% select(all_of(sw_vars)), 
                            na.rm=TRUE),
       PPFD_IN_TOC = PPFD_IN_1_1_1,
-      proportion_diffuse = SW_DIF / (SW_IN_TOC + SW_DIF),
+      proportion_diffuse = SW_DIF / SW_IN_TOC,
       proportion_diffuse = pmin(pmax(proportion_diffuse, 0), 1)
     ) %>%
     # Drop observations without TOC values and values at night
