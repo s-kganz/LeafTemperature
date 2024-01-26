@@ -4,6 +4,7 @@
 library(tidyverse)
 library(bigleaf)
 library(RcppRoll)
+library(robustbase)
 source("scripts/energy_balance/air.R")
 source("scripts/energy_balance/leaf.R")
 
@@ -144,29 +145,41 @@ fit_medlyn_model_parameters <- function(site, tower, flux, zr, zh, L) {
   # A couple options for fitting.
   
   # V1: numerical optimization. This is more sensitive to outliers, mitigate by
-  # weighting by sqrt(VPD)?
-  medlyn_optimizer_helper <- function(Gs, VPD, GPP, CO2) {
-    optimize(function(g1) {
-      sum(((medlyn_gs(GPP, VPD, CO2, g1) - Gs) ^ 2) * sqrt(VPD))
-    },
-    c(1, 10))
-  }
-  
-  fit_v1 <-
-    with(tower_gs, medlyn_optimizer_helper(Gs_mol, VPD, GPP_U50_f, CO2))
+  # weighting by sqrt(VPD)
+  # medlyn_optimizer_helper <- function(Gs, VPD, GPP, CO2) {
+  #   optimize(function(g1) {
+  #     sum(((medlyn_gs(GPP, VPD, CO2, g1) - Gs) ^ 2) * sqrt(VPD))
+  #   },
+  #   c(1, 10))
+  # }
+  # 
+  # fit_v1 <-
+  #   with(tower_gs, medlyn_optimizer_helper(Gs_mol, VPD, GPP_U50_f, CO2))
   
   # V2: Theil-Sen. This option is less sensitive to outliers but it doesn't
   # strictly follow the model specification.
-  # fit_v2 <- theil_sen_regression(Gs_mol ~ GPP / (sqrt(VPD) * CO2), data=tower_gs)
+  # fit_v2 <- theil_sen_regression(Gs_mol ~ GPP_U50_f / (sqrt(VPD) * CO2), data=tower_gs)
+  
+  # V3: robustbase. This is the method used in Knauer et al. (2018) 
+  fit_v3 <- nlrob(
+    Gs_mol ~ (1 + g1 / sqrt(VPD)) * (GPP_U50_f / CO2),
+    data=tower_gs,
+    algorithm="port",
+    start=c(g1=3),
+    lower=c(g1=1),
+    upper=c(g1=10)
+  )
+  
+  str(coef(fit_v3))
   
   tower_gs$Gs_mol_predicted <- medlyn_gs(
-    tower_gs$GPP_U50_f, tower_gs$VPD, tower_gs$CO2, fit_v1$minimum
+    tower_gs$GPP_U50_f, tower_gs$VPD, tower_gs$CO2, unname(coef(fit_v3))
   )
   tower_gs$site <- site
   
   list(site=site,
        g0 = 0,
-       g1 = fit_v1$minimum,
+       g1 = unname(coef(fit_v3)),
        data = tower_gs)
 }
 
