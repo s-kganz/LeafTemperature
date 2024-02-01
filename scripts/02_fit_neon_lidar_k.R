@@ -1,6 +1,9 @@
 # To run the radiation submodel, we need empirical light attenutation
 # coefficients for direct and diffuse radiation. These are calculated empirically
-# based on observations where diffuse and direct light dominate.
+# based on observations where diffuse and direct light dominate. We also need
+# to map vertical heights above ground to cumulative leaf area index. This
+# script calculates the attenuation coefficients and generates LAI-Z crosswalk
+# tables.
 
 library(lidR)
 library(tidyverse)
@@ -125,7 +128,8 @@ fit_lidar_constants <- function(site, site_lai, zmax=NA, zmin=1) {
   
   return(list(
     site=site,
-    data=iv_io_df,
+    lad_profile=lad_profile,
+    iv_io_data=iv_io_df,
     rad_coef=coef(iv_io_lm),
     lai_coef=k_lai
   ))
@@ -143,7 +147,17 @@ lidar_constants <- lapply(
   }
 )
 
-iv_io_data <- lapply(lidar_constants, function(l) l$data) %>% bind_rows()
+# Extract results ----
+
+# LAD profiles
+lad_data <- lapply(lidar_constants, function(l) {
+  l$lad_profile %>% mutate(site = l$site)
+}) %>% bind_rows()
+
+# Light attenuation data
+iv_io_data <- lapply(lidar_constants, function(l) l$iv_io_data) %>% bind_rows()
+
+# Attenuation constants
 lidar_constants_df <- lapply(lidar_constants, function(l) {
   list(
     site=l$site,
@@ -154,6 +168,7 @@ lidar_constants_df <- lapply(lidar_constants, function(l) {
   )
 }) %>% bind_rows()
 
+# Plotting ----
 # Extrapolate lines for beam/diffuse coefficients
 clai <- seq(0, 7, length.out=20)
 iv_io_extrapolate <- expand.grid(clai, 1:nrow(lidar_constants_df)) %>%
@@ -164,14 +179,33 @@ iv_io_extrapolate <- expand.grid(clai, 1:nrow(lidar_constants_df)) %>%
   pivot_longer(contains("iv_io"))
 
 # Plot mean transmission points over the fitted line
-ggplot(iv_io_data, aes(x=cum_lai, y=iv_io_mean)) +
+(plot_mean_transmission <- ggplot(iv_io_data, aes(x=cum_lai, y=iv_io_mean)) +
   geom_point(aes(color=proportion_diffuse_bin)) +
   geom_line(data=iv_io_extrapolate, mapping=aes(x=clai, y=value, group=name, linetype=name)) +
   facet_wrap(~ site, scales="free") +
   labs(x="Cumulative LAI", y="Proportion available light",
        color="Proportion diffuse light", name="") +
-  scale_y_log10() + theme_bw()
+  scale_y_log10() + theme_bw())
 
 write_csv(lidar_constants_df, "data_out/neon_lidar_constants.csv")
 
-  
+# Plot LAD profiles for each site
+(plot_lad_profiles <- ggplot(lad_data, aes(x=z)) +
+  geom_line(aes(y=lad)) +
+  coord_flip() +
+  facet_wrap(~ site, scales="free") +
+  labs(y=expression("Leaf area density"~frac(m^2, m^3)),
+       x="Height above ground (m)") +
+  theme_bw())
+
+(plot_cum_lai_profiles <- ggplot(lad_data, aes(x=z)) +
+    geom_line(aes(y=cum_lai)) +
+    coord_flip() +
+    facet_wrap(~ site, scales="free") +
+    labs(y=expression("Cumulative LAI"~frac(m^2, m^2)),
+         x="Height above ground (m)") +
+    theme_bw())
+
+lad_data %>%
+  drop_na() %>%
+  write_csv("data_out/neon_lad_profiles.csv")
