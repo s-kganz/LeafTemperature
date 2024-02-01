@@ -20,6 +20,13 @@ interpolate_tower_data <- function(tower, vars, var_z, interp_z, name_prefix="")
   stopifnot(length(vars) == length(var_z))
   stopifnot(all(vars %in% names(tower)))
   
+  if (!nrow(tower)) {
+    warning("Tower data frame is empty! Returning an empty data frame.")
+    ret <- data.frame(matrix(nrow=0, ncol=length(interp_z)))
+    names(ret) <- str_c(name_prefix, interp_z)
+    return(ret)
+  }
+  
   var_mtx <- tower %>%
     select(all_of(vars)) %>%
     as.matrix()
@@ -33,7 +40,11 @@ interpolate_tower_data <- function(tower, vars, var_z, interp_z, name_prefix="")
               approx(var_z, row, xout=interp_z, rule=2, na.rm=TRUE)$y, 
               error=function(e) return(rep(NA, length(interp_z))))
           }
-    ) %>% t()
+    )
+  
+  # If length(interp_z) == 1, var_interp is a vector, otherwise it is a matrix.
+  # Transpose only if it is a matrix.
+  if (!is.null(dim(var_interp))) {var_interp <- t(var_interp)}
   
   var_interp %>%
     as.data.frame() %>% 
@@ -51,12 +62,14 @@ interpolate_tower_data <- function(tower, vars, var_z, interp_z, name_prefix="")
 #'
 #' @examples
 get_var_heights <- function(all_vars, regex, site) {
-  if (!exists("amf_var_heights")) {amf_var_heights_ <- amf_var_info()}
+  if (!exists("amf_var_heights_")) {amf_var_heights_ <- amf_var_info()}
   stopifnot(site %in% amf_var_heights_$Site_ID)
   
   vars_select <- grep(regex, all_vars, value=TRUE)
+  if (!length(vars_select)) warning("No matching variables found in table!")
   
   amf_var_heights_site <- amf_var_heights_ %>% filter(Site_ID == site)
+  if (!nrow(amf_var_heights_site)) warning("Variable heights not found!")
   
   vars_height <- amf_var_heights_site$Height[
     match(vars_select, amf_var_heights_site$Variable)
