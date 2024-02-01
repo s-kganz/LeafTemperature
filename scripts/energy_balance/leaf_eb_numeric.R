@@ -17,7 +17,7 @@ source("scripts/energy_balance/air.R")
 #' @param a_lw Longwave absorptance (0-1)
 #' @param a_sw Shortwave absorptance (0-1)
 #' @param d Leaf characteristic dimension (m)
-#'
+#' @param aslist Return error and fluxes as a list? If false, only returns error.
 #'
 #' @return
 #' @export
@@ -25,7 +25,8 @@ source("scripts/energy_balance/air.R")
 #' @examples
 energy_balance_error <- function(Tl, Ta, u, gs, Pa, RH, 
                                  SW_abs, LW_abs_dn,
-                                 a_lw=0.98, a_sw=0.50, d=0.01) {
+                                 a_lw=0.98, a_sw=0.50, d=0.01,
+                                 aslist=FALSE) {
   # Physical parameters of the air
   rho     <- dry_air_density(Ta, Pa, eb_constants_$cp, eb_constants_$Mair)
   rho_mol <- dry_air_molar_density(Ta, Pa, eb_constants_$cp, eb_constants_$Mair)
@@ -53,7 +54,20 @@ energy_balance_error <- function(Tl, Ta, u, gs, Pa, RH,
   H <- sensible_heat(gbH, Tl, Ta)
   
   # Final energy closure calculation
-  abs(Rn - H - LE)
+  error <- abs(Rn - H - LE)
+  
+  # Return everything as a list
+  if (aslist) {
+    return(list(
+      error=error,
+      Rn=Rn,
+      H=H,
+      LE=LE,
+      omega=omega
+    ))
+  } else {
+    return(error)
+  }
 }
 
 #' @describeIn energy_balance_error User-friendly driver function to run
@@ -61,13 +75,20 @@ energy_balance_error <- function(Tl, Ta, u, gs, Pa, RH,
 energy_balance_driver <- function(Ta, u, gs, Pa, RH, 
                                   SW_abs, LW_abs_dn,
                                   a_lw=0.98, a_sw=0.50, d=0.01) {
-  optimize(
+  optim_result <- optimize(
     energy_balance_error,
     c(Ta-10, Ta+10),
     Ta, u, gs, Pa, RH, SW_abs, LW_abs_dn,
     a_lw=a_lw, a_sw=a_sw, d=d,
-    tol=1 # solve to within 1 W of closure
+    tol=0.01 # solve to within 0.01 K of optimum
   )
+  
+  Tl <- optim_result$minimum
+  
+  fluxes <- energy_balance_error(Tl, Ta, u, gs, Pa, RH, SW_abs, LW_abs_dn,
+                                 a_lw, a_sw, d, aslist=TRUE)
+  
+  c(Tl=Tl, fluxes)
 }
 
 if (sys.nframe() == 0) {
@@ -88,6 +109,6 @@ if (sys.nframe() == 0) {
   )
   
   plot(Tl_test, eb_error, col="black")
-  abline(h=optim_result$objective, col="red", lty="dashed")
-  abline(v=optim_result$minimum, col="red", lty="dashed")
+  abline(h=optim_result$error, col="red", lty="dashed")
+  abline(v=optim_result$Tl, col="red", lty="dashed")
 }
