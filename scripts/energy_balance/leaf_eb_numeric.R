@@ -18,6 +18,8 @@ source("scripts/energy_balance/air.R")
 #' @param a_sw Shortwave absorptance (0-1)
 #' @param d Leaf characteristic dimension (m)
 #' @param aslist Return error and fluxes as a list? If false, only returns error.
+#' @param bounds Deviation from air temperature to define the search interval. For example, if Ta = 290 K and bounds = 10 K, the model will search for an optimal leaf temperature in the range of [280, 300] K.
+#' @param run_no_transp Should the model be run a second time with gs = 0.001? This is necessary to calculate temperature forcings from the fluxes. If TRUE, additional outputs are returned.
 #'
 #' @return
 #' @export
@@ -74,10 +76,11 @@ energy_balance_error <- function(Tl, Ta, u, gs, Pa, RH,
 #' numerical optimization.
 energy_balance_driver <- function(Ta, u, gs, Pa, RH, 
                                   SW_abs, LW_abs_dn,
-                                  a_lw=0.98, a_sw=0.50, d=0.01) {
+                                  a_lw=0.98, a_sw=0.50, d=0.01, bounds=20,
+                                  run_no_transp=TRUE) {
   optim_result <- optimize(
     energy_balance_error,
-    c(Ta-10, Ta+10),
+    c(Ta-bounds, Ta+bounds),
     Ta, u, gs, Pa, RH, SW_abs, LW_abs_dn,
     a_lw=a_lw, a_sw=a_sw, d=d,
     tol=0.01 # solve to within 0.01 K of optimum
@@ -88,7 +91,26 @@ energy_balance_driver <- function(Ta, u, gs, Pa, RH,
   fluxes <- energy_balance_error(Tl, Ta, u, gs, Pa, RH, SW_abs, LW_abs_dn,
                                  a_lw, a_sw, d, aslist=TRUE)
   
-  c(Tl=Tl, fluxes)
+  if (run_no_transp) {
+    optim_result_notransp <- optimize(
+      energy_balance_error,
+      c(Ta-bounds, Ta+bounds),
+      Ta, u, 0.001, Pa, RH, SW_abs, LW_abs_dn,
+      a_lw=a_lw, a_sw=a_sw, d=d,
+      tol=0.01
+    )
+    
+    Tl_notransp <- optim_result_notransp$minimum
+    
+    dT_Rn <- Tl_notransp - Ta
+    dT_LE <- Tl_notransp - Tl
+    
+    return(c(Tl=Tl, fluxes, dT_Rn=dT_Rn, dT_LE=dT_LE))
+    
+  } else {
+    
+    return(c(Tl=Tl, fluxes))
+  }
 }
 
 if (sys.nframe() == 0) {
