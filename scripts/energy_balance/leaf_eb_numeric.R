@@ -32,7 +32,7 @@ energy_balance_error <- function(Tl, Ta, u, gs, Pa, RH,
   # Physical parameters of the air
   rho     <- dry_air_density(Ta, Pa, eb_constants_$cp, eb_constants_$Mair)
   rho_mol <- dry_air_molar_density(Ta, Pa, eb_constants_$cp, eb_constants_$Mair)
-  vpd     <- vapor_pressure_deficit(Ta, RH)
+  vpd     <- vapor_pressure_deficit(Tl, RH)
   gamma   <- psychrometric_constant(Pa, eb_constants_$cp, eb_constants_$MWr, 
                                     eb_constants_$l)
   desat   <- esat_slope(Ta)
@@ -95,7 +95,7 @@ energy_balance_driver <- function(Ta, u, gs, Pa, RH,
     optim_result_notransp <- optimize(
       energy_balance_error,
       c(Ta-bounds, Ta+bounds),
-      Ta, u, 0.001, Pa, RH, SW_abs, LW_abs_dn,
+      Ta, u, 0, Pa, RH, SW_abs, LW_abs_dn,
       a_lw=a_lw, a_sw=a_sw, d=d,
       tol=0.01
     )
