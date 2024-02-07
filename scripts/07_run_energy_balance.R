@@ -3,6 +3,7 @@
 library(tidyverse)
 library(suncalc)
 library(photosynthesis)
+library(lmodel2)
 source("scripts/energy_balance/leaf_eb_numeric.R")
 # Read source data and constants ----
 
@@ -43,7 +44,7 @@ site_meta <- read_csv("data_working/neon_site_metadata.csv") %>%
   # with LAI=1 because this makes the total canopy gas exchange equal to the 
   # simple sum of all the layers.
   mutate(
-    LAYER_L = map(LAI, function(x) seq(0, floor(x)-1))
+    LAYER_L = map(LAI, function(x) seq(0, floor(x)))
   )
 
 ## Photosynthesis submodel constants ----
@@ -211,7 +212,7 @@ flux_rad_model <- flux_layer_l %>%
   )
 
 # Run photosynthesis submodel ----
-flux_ps_model <- flux_rad_model %>%
+flux_ps_weight <- flux_rad_model %>%
   # Calculate layer contribution to GPP
   mutate(
     PS_LAYER_GPP_WEIGHT = marshall_biscoe_1980(
@@ -236,7 +237,9 @@ flux_ps_model <- flux_rad_model %>%
     # Force reasonable values
     LAYER_VPD = pmax(LAYER_SAT_VP - LAYER_VP, 0.1),
     LAYER_RH = 100 * (1 - (LAYER_VPD / LAYER_SAT_VP)),
-  ) %>%
+  )
+  
+flux_ps_model <- flux_ps_weight %>%
   # Drop observations with missing data for getting stomatal conductance
   drop_na(c(MEDLYN_g1, LAYER_CO2, LAYER_H2O)) %>%
   # Calculate stomatal conductance in the layer
@@ -251,35 +254,161 @@ flux_eb_result <- flux_ps_model %>%
       energy_balance_driver,
       bounds=20,
       run_no_transp=TRUE,
-      .progress=TRUE
+      .progress="regular EB model"
     )
   ) %>%
-  unnest_wider(EB_MODEL, names_sep="_")
+  unnest_wider(EB_MODEL, names_sep="_") %>%
+  mutate(EB_MODEL_dT = EB_MODEL_Tl - 273.15 - LAYER_TA)
 
-#write_csv(flux_eb_result, "data_out/cross_site_eb_result.csv")
+# Second run with gbH way smaller by increasing characteristic leaf dimension
+# by an order of magnitude.
+flux_eb_result_bigleaf <- flux_ps_model %>%
+  mutate(
+    EB_MODEL = pmap(
+      list(LAYER_TA+273.15, LAYER_WS, PS_LAYER_GS, RAD_TOC_PA, LAYER_RH,
+           RAD_SW_ABS, RAD_LW_ABS),
+      energy_balance_driver,
+      bounds=20,
+      d=0.1,
+      run_no_transp=TRUE,
+      .progress="low gbH EB model"
+    )
+  ) %>%
+  unnest_wider(EB_MODEL, names_sep="_") %>%
+  mutate(EB_MODEL_dT = EB_MODEL_Tl - 273.15 - LAYER_TA)
+  
 
-#flux_eb_unnest <- read_csv("data_out/cross_site_eb_result.csv")
+# Third run on WREF only, and varying g1 from 2-10 for sensitivity analysis.
+flux_wref_g1_sensitivity <- flux_ps_weight %>%
+  filter(SITE_NEON == "WREF") %>%
+  drop_na(c(LAYER_H2O, LAYER_CO2)) %>%
+  mutate(MEDLYN_g0 = 0, MEDLYN_g1 = map(SITE_NEON, function(x) seq(2:10))) %>%
+  unnest(MEDLYN_g1) %>%
+  mutate(PS_LAYER_GS = medlyn_gs(PS_LAYER_GPP, LAYER_VPD, LAYER_CO2, MEDLYN_g1, MEDLYN_g0))
+
+flux_eb_result_wref_g1_sensitivity <- flux_wref_g1_sensitivity %>%
+  mutate(
+    EB_MODEL = pmap(
+      list(LAYER_TA+273.15, LAYER_WS, PS_LAYER_GS, RAD_TOC_PA, LAYER_RH,
+           RAD_SW_ABS, RAD_LW_ABS),
+      energy_balance_driver,
+      bounds=20,
+      run_no_transp=TRUE,
+      .progress="WREF g1 sensitivty analysis"
+    )
+  ) %>%
+  unnest_wider(EB_MODEL, names_sep="_") %>%
+  mutate(EB_MODEL_dT = EB_MODEL_Tl - 273.15 - LAYER_TA)
+  
+  
+
+# Save results ----
+write_csv(flux_eb_result, "data_out/model_runs/cross_site_eb.csv")
+write_csv(flux_eb_result_bigleaf, "data_out/model_runs/cross_site_eb_bigleaf.csv")
+write_csv(flux_eb_result_wref_g1_sensitivity, "data_out/model_runs/wref_eb_g1_sensitivity.csv")
 
 # Plots! ----
 # Tl by site
 (plot_tl_hist <- flux_eb_result %>%
+   #filter(LAYER_L/LAI > 0.5) %>%
    ggplot(aes(x=LAYER_TA, y=EB_MODEL_Tl-273.15-LAYER_TA)) +
-   geom_point(aes(color=LAYER_L/LAI), alpha=0.1) +
+   geom_point(aes(color=LAYER_L/LAI), alpha=0.5) +
    #geom_abline(slope=1, intercept=0, color="red") +
    facet_wrap(~ SITE_NEON) +
    scale_color_viridis_c() +
    theme_bw()
 )
 
+# Tl vs. Ta for all layers
+(plot_tl_ta <- flux_eb_result %>%
+  mutate(EB_MODEL_dT = EB_MODEL_Tl - 273.15 - LAYER_TA) %>%
+  ggplot(aes(x=LAYER_TA, y=EB_MODEL_dT)) +
+  geom_point(alpha=0.5) +
+  geom_hline(yintercept=0) +
+  facet_grid(SITE_NEON ~ LAYER_L) +
+  theme_bw() +
+  labs(x=expression("Air temperature ("~degree~"C)"),
+       y="Leaf-air T difference ("~degree~"K)")
+)
+
+# Four quadrants figure
+flux_eb_models <- flux_eb_result %>%
+  mutate(EB_MODEL_dT = EB_MODEL_Tl - 273.15 - LAYER_TA) %>%
+  select(SITE_NEON, LAI, LAYER_L, LAYER_TA, contains("EB_MODEL")) %>%
+  group_by(SITE_NEON, LAYER_L, LAI) %>%
+  nest(data=-c(SITE_NEON, LAYER_L, LAI)) %>%
+  mutate(
+    # Run model II regressions to get Tl/Ta slope
+    slope_lm = map(
+      data,
+      function(data) {
+        lmodel2(EB_MODEL_Tl ~ LAYER_TA, data=data)
+      }
+    ),
+    slope_p025 = map_dbl(slope_lm, function(m) m$confidence.intervals[3, 4]),
+    slope_p50  = map_dbl(slope_lm, function(m) m$regression.results[3, 3]),
+    slope_p975 = map_dbl(slope_lm, function(m) m$confidence.intervals[3, 5]),
+    # Variance partitioning
+    var_lm = map(
+      data,
+      function(data) {
+        anova(lm(EB_MODEL_dT ~ EB_MODEL_dT_Rn + EB_MODEL_dT_LE, data=data))
+      }
+    ),
+    tot_var = map_dbl(var_lm, function(m) sum(m$`Sum Sq`)),
+    Rn_var = map_dbl(var_lm, function(m) m$`Sum Sq`[1]),
+    LE_var = map_dbl(var_lm, function(m) sum(m$`Sum Sq`[2])),
+    prop_var_Rn = Rn_var / tot_var,
+    prop_var_LE = LE_var / tot_var
+  ) %>%
+  select(SITE_NEON, LAYER_L, LAI, prop_var_Rn, slope_p50, slope_p025, slope_p975) %>%
+  arrange(SITE_NEON, LAYER_L) %>%
+  group_by(SITE_NEON) %>%
+  mutate(
+    xend = lead(prop_var_Rn),
+    yend = lead(slope_p50)
+  ) 
+
+(plot_slope_rn <- flux_eb_models %>%
+  ggplot(aes(x=prop_var_Rn, y=slope_p50)) +
+  #geom_segment(aes(group=SITE_NEON, xend=xend, yend=yend)) +
+  geom_errorbar(aes(ymin=slope_p025, ymax=slope_p975),
+               width=0.005) +
+  geom_point(aes(color=LAYER_L/LAI), size=4) +
+  scale_color_viridis_c() +
+  facet_wrap(~ SITE_NEON, scales="free") +
+  labs(y=expression(T[leaf]~"vs."~T[air]~"slope (model II regression)"),
+       x=expression("Proportion of variance explained by"~R[n]),
+       color="Proportion of total LAI") +
+  theme_bw())
+
+# How well does layer-by-layer LE match canopy LE?
+(plot_le_one_to_one <- flux_eb_result %>%
+  select(SITE_NEON, TIMESTAMP, TOC_LE, EB_MODEL_LE) %>%
+  filter(TOC_LE > 0) %>%
+  group_by(SITE_NEON, TIMESTAMP) %>%
+  summarize(TOC_LE=first(TOC_LE),
+            EB_MODEL_LE_SUM = sum(EB_MODEL_LE)) %>%
+  ggplot(aes(x=TOC_LE, y=EB_MODEL_LE_SUM)) +
+  ggpointdensity::geom_pointdensity() +
+  geom_abline(slope=1, intercept=0, color="red", linetype="dashed") +
+  scale_color_viridis_c() +
+  facet_wrap(~ SITE_NEON) +
+  theme_bw() +
+  labs(x=expression("Tower-based "~lambda~"E"~bgroup("(",frac(W, m^2),")")),
+       y=expression("Model-based "~lambda~"E"~bgroup("(",frac(W, m^2),")")),
+       color="Point density")
+)
+
 # Layer-by-layer plot of the two fluxes
-(plot_rad_fluxes <- flux_ps_model %>%
+(plot_rad_fluxes <- flux_eb_result %>%
   filter(!is.na(MEDLYN_g1)) %>%
   select(SITE_NEON, LAYER_L, RAD_LW_ABS, RAD_SW_ABS) %>%
   mutate(LAYER_L = factor(LAYER_L)) %>%
   pivot_longer(c(RAD_SW_ABS, RAD_LW_ABS)) %>%
   ggplot(aes(x=factor(LAYER_L), y=value)) +
   geom_boxplot(aes(fill=name)) +
-  facet_wrap(~ SITE_NEON, scales="free") +
+  facet_wrap(~ SITE_NEON, scales="free_y") +
   coord_flip() +
   scale_x_discrete(limits=rev) +
   scale_fill_hue(labels=c("Longwave radiation", "Shortwave radiation")) +
