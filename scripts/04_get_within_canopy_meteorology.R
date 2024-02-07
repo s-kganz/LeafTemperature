@@ -76,7 +76,7 @@ all_interps <- foreach(i=1:nrow(site_meta), .combine=rbind) %do% {
   site_amf  <- site_meta$site_ameriflux[i]
   site_lai  <- site_meta$lai_best[i]
   
-  this_l <- seq(0, floor(site_lai)-1)
+  this_l <- seq(0, floor(site_lai))
   
   this_tower <- read_csv(
     file.path("data_working", "neon_flux", str_c(site_amf, ".csv"))
