@@ -18,11 +18,9 @@ source("scripts/energy_balance/constants.R")
 #' @export
 #'
 #' @examples
-net_isothermal_radiation <- function(SW_dir, SW_dif, SW_out, LW_down, Ta, G,
-                                     a_sw=0.5, a_lw=0.98) {
+net_isothermal_radiation <- function(SW_abs, LW_abs_dn, Ta, a_lw, G=0) {
   sb <- eb_constants_$sb
-  SW_net <- SW_dir + SW_dif - SW_out
-  Rn <- a_sw * SW_net + a_lw * (LW_down + G) - a_lw * sb * Ta^4
+  Rn <- SW_abs + LW_abs_dn - a_lw * sb * Ta^4
 }
 
 #' Net radiation, but allowing for nonisothermal conditions.
