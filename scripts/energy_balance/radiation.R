@@ -18,9 +18,10 @@ source("scripts/energy_balance/constants.R")
 #' @export
 #'
 #' @examples
-net_isothermal_radiation <- function(SW_abs, LW_abs_dn, Ta, a_lw, G=0) {
+net_isothermal_radiation <- function(SW_abs, LW_abs_dn, Ta, a_lw) {
   sb <- eb_constants_$sb
-  Rn <- SW_abs + LW_abs_dn - a_lw * sb * Ta^4
+  # Multiply by 2 because both sides of the leaf radiate heat.
+  Rn <- SW_abs + LW_abs_dn - outgoing_longwave_radiation(Ta, ef=a_lw)
 }
 
 #' Net radiation, but allowing for nonisothermal conditions.
@@ -36,7 +37,7 @@ net_isothermal_radiation <- function(SW_abs, LW_abs_dn, Ta, a_lw, G=0) {
 #'
 #' @examples
 net_nonisothermal_radiation <- function(SW_abs, LW_abs_dn, Tl, a_lw=0.98) {
-  SW_abs + LW_abs_dn - (a_lw * eb_constants_$sb * Tl^4)
+  SW_abs + LW_abs_dn - outgoing_longwave_radiation(Tl, ef=a_lw)
 }
 
 #' Absorbed shortwave radiation within a tree canopy. Comes from Wang and
@@ -138,6 +139,8 @@ absorbed_longwave_radiation <- function(Ta, l, L,
   
   if (aslist) {
     return(list(
+      e_down=e_down,
+      e_up=e_up,
       q_sun=q_sun,
       q_shade=q_shade,
       f_sun=f_sun,
@@ -167,7 +170,7 @@ absorbed_longwave_radiation <- function(Ta, l, L,
 #' @examples
 absorbed_downwelling_longwave_radiation <- function(Ta, l, L,
                                            kb, ea, ef=0.95, es=0.9,
-                                           kd=0.8) {
+                                           kd=0.8, aslist=FALSE) {
   # Effective emissivity of downwelling radiation
   e_down <- (
     ef -
@@ -175,10 +178,18 @@ absorbed_downwelling_longwave_radiation <- function(Ta, l, L,
       (1 - ef) * (1 - exp(-kd * l)) * (ef - (ef - es) * exp(-kd * (L - l)))
   )
   
-  return(
-    # Multiply by 2 because both sides of the leaf receive this heat flux.
-    2 * eb_constants_$sb * e_down * Ta^4
-  )
+  # Multiplying by 2 here because longwave radiation is diffuse and radiated
+  # in all directions. So, the underside of leaves also receives this flux.
+  LW_abs_dn <- 2 * eb_constants_$sb * e_down * Ta^4
+  
+  if (aslist) {
+    return(list(
+      e_down=e_down,
+      LW_abs_dn=LW_abs_dn
+    ))
+  } else {
+    return(LW_abs_dn)
+  }
 }
 
 #' Outgoing (upwelling) longwave radiation from a leaf. This version just models
