@@ -81,6 +81,14 @@ get_var_heights <- function(all_vars, regex, site) {
   )
 } 
 
+write_if_not_exist <- function(table, path, ...) {
+  if (!file.exists(path)) {
+    write_csv(table, ...)
+  } else {
+    warning(paste("File", path, "already exists. Table not written."))
+  }
+}
+
 if (sys.nframe() == 0) {
   a_tower <- read_csv("data_working/neon_flux/US-xWR.csv")
   

@@ -7,6 +7,7 @@ library(RcppRoll)
 library(robustbase)
 source("scripts/energy_balance/air.R")
 source("scripts/energy_balance/leaf.R")
+source("scripts/tower_util.R")
 
 fit_medlyn_model_parameters <- function(site, tower, flux, zr, zh, L) {
   cat("Now processing", site, "\n")
@@ -183,55 +184,57 @@ fit_medlyn_model_parameters <- function(site, tower, flux, zr, zh, L) {
        data = tower_gs)
 }
 
-flux <- read_csv("data_out/cross_site_flux_partition_qc.csv")
-lai  <- read_csv("data_out/neon_sampled_dhp_lai.csv")
-meta <- read_csv("data_working/neon_site_metadata.csv") %>%
-  left_join(lai, by=c("site_neon"="site")) %>%
-  mutate(L_best = ifelse(is.na(lai), L_dhp, lai))
-
-medlyn_fits <- lapply(1:nrow(meta), function(i) {
-  this_site_amf  <- meta$site_ameriflux[i]
-  this_site_neon <- meta$site_neon[i]
-  this_zr        <- meta$tower_height[i]
-  this_zh        <- meta$canopy_height[i]
-  this_L         <- meta$L_best[i]
+if (sys.nframe() == 0) {
+  flux <- read_csv("data_out/cross_site_flux_partition_qc.csv")
+  lai  <- read_csv("data_out/neon_sampled_dhp_lai.csv")
+  meta <- read_csv("data_working/neon_site_metadata.csv") %>%
+    left_join(lai, by=c("site_neon"="site")) %>%
+    mutate(L_best = ifelse(is.na(lai), L_dhp, lai))
   
-  this_flux <- flux %>%
-    filter(site == this_site_neon)
+  medlyn_fits <- lapply(1:nrow(meta), function(i) {
+    this_site_amf  <- meta$site_ameriflux[i]
+    this_site_neon <- meta$site_neon[i]
+    this_zr        <- meta$tower_height[i]
+    this_zh        <- meta$canopy_height[i]
+    this_L         <- meta$L_best[i]
+    
+    this_flux <- flux %>%
+      filter(site == this_site_neon)
+    
+    if (nrow(this_flux) == 0) {
+      cat(this_site_neon, "has no flux! Skipping...\n")
+      return(list(site=this_site_amf, g0=NA, g1=NA, data=NA))
+    }
+    
+    this_tower_file <- file.path("data_working/neon_flux", str_c(this_site_amf, ".csv"))
+    
+    this_tower <- read_csv(this_tower_file, col_types=cols()) # Quiet, you!
+    
+    fit_medlyn_model_parameters(this_site_amf, this_tower,
+                                this_flux, this_zr, this_zh, this_L)
+  })
   
-  if (nrow(this_flux) == 0) {
-    cat(this_site_neon, "has no flux! Skipping...\n")
-    return(list(site=this_site_amf, g0=NA, g1=NA, data=NA))
-  }
+  medlyn_data <- lapply(medlyn_fits, function(x) x$data)
+  medlyn_df <- medlyn_data[!is.na(medlyn_data)] %>% bind_rows()
+  medlyn_coefs <- lapply(medlyn_fits, function(x) x[-4]) %>% bind_rows()
   
-  this_tower_file <- file.path("data_working/neon_flux", str_c(this_site_amf, ".csv"))
+  ggplot(NULL) + 
+    geom_point(mapping=aes(x=Gs_mol, y=Gs_mol_predicted, color=VPD),
+               data=medlyn_df) +
+    geom_abline(slope=1, intercept=0, color="gray") +
+    geom_label(mapping=aes(label=str_c("g1 = ", round(g1, digits=2))),
+               x=0.4,
+               y=1.5,
+               data=medlyn_coefs) +
+    facet_wrap(~ site) +
+    xlim(0, 1.5) + coord_equal() +
+    scale_color_viridis_c() +
+    theme_bw() +
+    labs(y = expression("Model G"[s] ~ bgroup("(", frac(mol, m ^ 2 ~ s), ")")),
+         x = expression("Penman-Monteith G"[s] ~ bgroup("(", frac(mol, m ^
+                                                                    2 ~ s), ")")),
+         color = "VPD (kPa)")
   
-  this_tower <- read_csv(this_tower_file, col_types=cols()) # Quiet, you!
-  
-  fit_medlyn_model_parameters(this_site_amf, this_tower,
-                              this_flux, this_zr, this_zh, this_L)
-})
-
-medlyn_data <- lapply(medlyn_fits, function(x) x$data)
-medlyn_df <- medlyn_data[!is.na(medlyn_data)] %>% bind_rows()
-medlyn_coefs <- lapply(medlyn_fits, function(x) x[-4]) %>% bind_rows()
-
-ggplot(NULL) + 
-  geom_point(mapping=aes(x=Gs_mol, y=Gs_mol_predicted, color=VPD),
-             data=medlyn_df) +
-  geom_abline(slope=1, intercept=0, color="gray") +
-  geom_label(mapping=aes(label=str_c("g1 = ", round(g1, digits=2))),
-             x=0.4,
-             y=1.5,
-             data=medlyn_coefs) +
-  facet_wrap(~ site) +
-  xlim(0, 1.5) + coord_equal() +
-  scale_color_viridis_c() +
-  theme_bw() +
-  labs(y = expression("Model G"[s] ~ bgroup("(", frac(mol, m ^ 2 ~ s), ")")),
-       x = expression("Penman-Monteith G"[s] ~ bgroup("(", frac(mol, m ^
-                                                                  2 ~ s), ")")),
-       color = "VPD (kPa)")
-
-write_csv(medlyn_df, "data_out/cross_site_medlyn_fit_results.csv")
-write_csv(medlyn_coefs, "data_out/cross_site_medlyn_coefficients.csv")
+  write_if_not_exist(medlyn_df, "data_out/cross_site_medlyn_fit_results.csv")
+  write_if_not_exist(medlyn_coefs, "data_out/cross_site_medlyn_coefficients.csv")
+}

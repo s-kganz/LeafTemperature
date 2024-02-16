@@ -97,6 +97,6 @@ all_interps <- foreach(i=1:nrow(site_meta), .combine=rbind) %do% {
   interpolation_driver(site_amf, site_neon, this_tower_filter, this_l)
 }
 
-write_csv(all_interps, "data_out/cross_site_interpolated_meteorology.csv")
+write_if_not_exist(all_interps, "data_out/cross_site_interpolated_meteorology.csv")
 
   

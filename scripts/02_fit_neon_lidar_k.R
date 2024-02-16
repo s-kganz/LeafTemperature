@@ -9,6 +9,8 @@ library(lidR)
 library(tidyverse)
 library(amerifluxr)
 
+source("scripts/tower_util.R")
+
 # Prepare site-level LAIs ----
 site_lai <- read_csv("data_out/neon_sampled_dhp_lai.csv")
 
@@ -187,7 +189,7 @@ iv_io_extrapolate <- expand.grid(clai, 1:nrow(lidar_constants_df)) %>%
        color="Proportion diffuse light", name="") +
   scale_y_log10() + theme_bw())
 
-write_csv(lidar_constants_df, "data_out/neon_lidar_constants.csv")
+write_if_not_exist(lidar_constants_df, "data_out/neon_lidar_constants.csv")
 
 # Plot LAD profiles for each site
 (plot_lad_profiles <- ggplot(lad_data, aes(x=z)) +
@@ -208,4 +210,4 @@ write_csv(lidar_constants_df, "data_out/neon_lidar_constants.csv")
 
 lad_data %>%
   drop_na() %>%
-  write_csv("data_out/neon_lad_profiles.csv")
+  write_if_not_exist("data_out/neon_lad_profiles.csv")

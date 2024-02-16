@@ -108,66 +108,68 @@ calculate_dhp_lai_manual <- function(url, verbose=FALSE, ...) {
   return(result)
 }
 
-sites <- read_csv("data_working/neon_site_metadata.csv") %>% pull(site_neon)
-
-dhp_product <- loadByProduct(
-  "DP1.10017.001",
-  site=sites,
-  token=token,
-  tabl="dhp_perimagefile",
-  package="basic",
-  check.size=FALSE
-)
-
-dhp_table <- dhp_product$dhp_perimagefile %>%
-  filter(imageType == "overstory",
-         cameraOrientation == "upward") %>%
-  mutate(year = year(startDate)) %>%
-  filter(year >= 2019) %>%
-  group_by(siteID) %>%
-  # Sample at least 10 images from each site
-  slice(sample(min(10, n())))
-
-write_csv(dhp_table, "data_out/neon_sampled_dhp_images.csv")
-
-neon_lai_list <- lapply(
-  1:nrow(dhp_table), function(i) {
-    cat("[Image", i, "of", nrow(dhp_table), "]\n")
-    
-    site <- dhp_table$siteID[i]
-    year <- dhp_table$year[i]
-    url <- dhp_table$imageFileUrl[i]
-    
-    cat(site, year, "\n")
-    cat(url, "\n")
-    
-    tryCatch(
-      calculate_dhp_lai_manual(url, verbose=TRUE, site=site, year=year, srcurl=url),
-      error = function(e) list(site=site, year=year, srcurl=url)
-    )
-  }
-)
-
-neon_lai_list_filter <- neon_lai_list[lapply(neon_lai_list, class) == "list"]
-neon_lai <- bind_rows(neon_lai_list_filter)
-
-median_lai <- neon_lai %>% group_by(site) %>% summarize(L_dhp = median(L))
-
-# Compare the DHP-derived LAI with other estimates in the literature
-known_lais <- read_csv("data_working/neon_site_metadata.csv") %>%
-  select(site_neon, lai) %>% filter(!is.na(lai)) %>%
-  left_join(median_lai, by=c("site_neon"="site"))
-
-correction_factor <- known_lais %>%
-  # Geometric mean error ratio
-  mutate(error_ratio = lai / L_dhp) %>%
-  pull(error_ratio) %>%
-  log() %>% mean() %>% exp()
-
-neon_lai_corrected <- median_lai %>%
-  # Very sparse ecosystems give an LAI < 1, but a value this low doesn't really
-  # make sense for the energy balance model. Consider the LAI = 1 system to be
-  # a section of forest where there are enough trees to yield a meaningful LAI.
-  mutate(L_dhp_corrected = pmax(1, L_dhp * correction_factor))
-
-write_csv(neon_lai_corrected, "data_out/neon_sampled_dhp_lai.csv")
+if (sys.nframe() == 0) {
+  sites <- read_csv("data_working/neon_site_metadata.csv") %>% pull(site_neon)
+  
+  dhp_product <- loadByProduct(
+    "DP1.10017.001",
+    site=sites,
+    token=token,
+    tabl="dhp_perimagefile",
+    package="basic",
+    check.size=FALSE
+  )
+  
+  dhp_table <- dhp_product$dhp_perimagefile %>%
+    filter(imageType == "overstory",
+           cameraOrientation == "upward") %>%
+    mutate(year = year(startDate)) %>%
+    filter(year >= 2019) %>%
+    group_by(siteID) %>%
+    # Sample at least 10 images from each site
+    slice(sample(min(10, n())))
+  
+  write_if_not_exist(dhp_table, "data_out/neon_sampled_dhp_images.csv")
+  
+  neon_lai_list <- lapply(
+    1:nrow(dhp_table), function(i) {
+      cat("[Image", i, "of", nrow(dhp_table), "]\n")
+      
+      site <- dhp_table$siteID[i]
+      year <- dhp_table$year[i]
+      url <- dhp_table$imageFileUrl[i]
+      
+      cat(site, year, "\n")
+      cat(url, "\n")
+      
+      tryCatch(
+        calculate_dhp_lai_manual(url, verbose=TRUE, site=site, year=year, srcurl=url),
+        error = function(e) list(site=site, year=year, srcurl=url)
+      )
+    }
+  )
+  
+  neon_lai_list_filter <- neon_lai_list[lapply(neon_lai_list, class) == "list"]
+  neon_lai <- bind_rows(neon_lai_list_filter)
+  
+  median_lai <- neon_lai %>% group_by(site) %>% summarize(L_dhp = median(L))
+  
+  # Compare the DHP-derived LAI with other estimates in the literature
+  known_lais <- read_csv("data_working/neon_site_metadata.csv") %>%
+    select(site_neon, lai) %>% filter(!is.na(lai)) %>%
+    left_join(median_lai, by=c("site_neon"="site"))
+  
+  correction_factor <- known_lais %>%
+    # Geometric mean error ratio
+    mutate(error_ratio = lai / L_dhp) %>%
+    pull(error_ratio) %>%
+    log() %>% mean() %>% exp()
+  
+  neon_lai_corrected <- median_lai %>%
+    # Very sparse ecosystems give an LAI < 1, but a value this low doesn't really
+    # make sense for the energy balance model. Consider the LAI = 1 system to be
+    # a section of forest where there are enough trees to yield a meaningful LAI.
+    mutate(L_dhp_corrected = pmax(1, L_dhp * correction_factor))
+  
+  write_if_not_exist(neon_lai_corrected, "data_out/neon_sampled_dhp_lai.csv")
+}

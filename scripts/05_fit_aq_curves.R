@@ -5,6 +5,7 @@
 
 library(tidyverse)
 library(photosynthesis)
+source("scripts/tower_util.R")
 
 # Read/prepare data ----
 flux <- read_csv("data_out/cross_site_flux_partition_qc.csv")
@@ -98,4 +99,4 @@ ggplot(NULL) +
   theme_bw()
 
 # Save model coefficients ----
-write_csv(fits, "data_out/cross_site_aq_constants.csv")
+write_if_not_exist(fits, "data_out/cross_site_aq_constants.csv")
