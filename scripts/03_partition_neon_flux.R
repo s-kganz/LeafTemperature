@@ -4,28 +4,12 @@ library(REddyProc)
 source("scripts/energy_balance/air.R")
 source("scripts/tower_util.R")
 
-process_site_year <- function(site, lat, lon, flux, tower) {
-  flux_tower <- flux %>%
-    select(timeBgn, data.fluxCo2.nsae.flux) %>%
-    left_join(
-      tower %>%
-        select(TIMESTAMP, SW_IN_1_1_1, TA_1_1_1, RH, USTAR),
-      by=c("timeBgn"="TIMESTAMP")
-    ) %>%
-    setNames(c("DateTime", "NEE", "Rg", "Tair", "RH", "Ustar")) %>%
-    # REddyProc expects VPD in hPa instead of kPa like everyone else >:(
-    mutate(VPD = vapor_pressure_deficit(Tair + 273.15, RH) * 10,
-           # We don't apply the NEON QC flags until after gap-filling; these
-           # bounds ensure we don't use really bad data.
-           Rg = ifelse(Rg < 0, 0, Rg),
-           VPD = ifelse(VPD < 0, 0, VPD),
-           NEE = ifelse(NEE < -50, NA, NEE),
-           NEE = ifelse(NEE > 100, NA, NEE))
-  
-  flux_tower <- filterLongRuns(flux_tower, "NEE")
+run_reddy_proc <- function(site, lat, lon, table, ...) {
+  table <- filterLongRuns(table, "NEE")
   
   EProc <- sEddyProc$new(
-    site, flux_tower, c('NEE','Rg','Tair','VPD', 'Ustar')
+    site, table, c('NEE','Rg','Tair','VPD', 'Ustar'),
+    ...
   )
   
   EProc$sEstimateUstarScenarios(
@@ -44,8 +28,9 @@ process_site_year <- function(site, lat, lon, flux, tower) {
   
   EProc$sMRFluxPartitionUStarScens(parsE0Regression=list(TempRange=3))
   
-
   result <- EProc$sExportResults()
+  
+  print(names(result))
   
   if ("R_ref_U50" %in% names(result)) {
     # Partitioning succeeded!
@@ -54,7 +39,6 @@ process_site_year <- function(site, lat, lon, flux, tower) {
       select(Ustar_U50_Thres, R_ref_U50, E_0_U50, Reco_U50, GPP_U50_f) %>%
       # Join these back with the original table. This assumes REddyProc doesn't
       # eat any rows.
-      cbind(flux, .) %>%
       return()
   } else {
     # Partitioning failed :(
@@ -65,9 +49,29 @@ process_site_year <- function(site, lat, lon, flux, tower) {
              E_0_U50=NA,
              Reco_U50=NA,
              GPP_U50_f=NA) %>%
-      cbind(flux, .) %>%
       return()
   }
+}
+
+process_site_year <- function(site, lat, lon, flux, tower) {
+  flux_tower <- flux %>%
+    select(timeBgn, data.fluxCo2.nsae.flux) %>%
+    left_join(
+      tower %>%
+        select(TIMESTAMP, SW_IN_1_1_1, TA_1_1_1, RH, USTAR),
+      by=c("timeBgn"="TIMESTAMP")
+    ) %>%
+    setNames(c("DateTime", "NEE", "Rg", "Tair", "RH", "Ustar")) %>%
+    # REddyProc expects VPD in hPa instead of kPa like everyone else >:(
+    mutate(VPD = vapor_pressure_deficit(Tair + 273.15, RH) * 10,
+           # We don't apply the NEON QC flags until after gap-filling; these
+           # bounds ensure we don't use really bad data.
+           Rg = ifelse(Rg < 0, 0, Rg),
+           VPD = ifelse(VPD < 0, 0, VPD),
+           NEE = ifelse(NEE < -50, NA, NEE),
+           NEE = ifelse(NEE > 100, NA, NEE))
+  
+  run_reddy_proc(site, lat, lon, flux_tower)
 }
 
 get_tower_data <- function(site, year) {
@@ -81,7 +85,7 @@ get_tower_data <- function(site, year) {
     return()
 }
 
-if (sys.nframe() == 0) {
+process_neon_flux <- function() {
   site_meta <- read_csv("data_working/neon_site_metadata.csv")
   all_flux <- read_csv("data_out/cross_site_flux.csv") %>%
     # N.b. can't drop any rows here otherwise REddyProc complains about non-
@@ -109,7 +113,7 @@ if (sys.nframe() == 0) {
     
     if (sum(!is.na(flux$data.fluxCo2.nsae.flux)) < 3000) {
       warning(site_neon, " (", year, ") ", "has insufficient non-NA data. ",
-                  "Returning NA.")
+              "Returning NA.")
       return(NA)
     }
     
@@ -122,8 +126,9 @@ if (sys.nframe() == 0) {
     # Pull tower data
     tower <- get_tower_data(site_amf, year)
     
-    # Pass to REddyProc pipeline
-    process_site_year(site_amf, site_lat, site_lon, flux, tower)
+    # Pass to REddyProc pipeline and cbind with original data
+    process_site_year(site_amf, site_lat, site_lon, flux, tower) %>%
+      cbind(flux, .)
   })
   
   # Drop NA results and bind together in one big table
@@ -150,4 +155,46 @@ if (sys.nframe() == 0) {
   processed_flux_df_qc %>%
     select(-year) %>%
     write_if_not_exist("data_out/cross_site_flux_partition_qc.csv")
+}
+
+process_old_wref_flux <- function() {
+  wref_meta <- read_csv("data_working/neon_site_metadata.csv") %>%
+    filter(site_neon == "WREF")
+  
+  wref_flux <- read_csv("data_out/old_wref_clean.csv") %>%
+    select(TIMESTAMP, SW_IN, TA_70, RH_70, USTAR, NEE) %>%
+    mutate(VPD = vapor_pressure_deficit(TA_70+273.15, RH_70)) %>%
+    rename(
+      DateTime=TIMESTAMP,
+      Rg=SW_IN,
+      Tair=TA_70,
+      Ustar=USTAR
+    )
+  
+  wref_flux_processed <- run_reddy_proc(
+    "US-xWR", wref_meta$tower_lat, wref_meta$tower_lon, wref_flux,
+    DTS=24
+  )
+  
+  wref_flux_final <- wref_flux_processed %>%
+    # Add in vars from original table
+    cbind(wref_flux, .) %>%
+    # Drop observations where partitioning failed and where GPP < 0 because
+    # this is nonphysical
+    filter(!is.na(R_ref_U50),
+           GPP_U50_f >= 0) %>%
+    # Drop observations that model total NEE poorly
+    mutate(NEE_model = Reco_U50 - GPP_U50_f,
+           reldiff = (NEE_model - NEE) / NEE) %>%
+    filter(abs(reldiff) < 0.1) %>%
+    # Drop observations where GPP < 0 since this is nonphysical
+    filter(GPP_U50_f >= 0) %>%
+    select(-NEE_model, -reldiff)
+  
+  write_if_not_exist(wref_flux_final, "data_out/old_wref_flux_partition.csv")
+}
+
+if (sys.nframe() == 0) {
+  #process_neon_flux()
+  process_old_wref_flux()
 }
