@@ -319,7 +319,7 @@ write_if_not_exist(flux_eb_result_wref_g1_sensitivity, "data_out/model_runs/wref
 
 # Plots! ----
 # Tl by site
-(plot_tl_hist <- flux_eb_result %>%
+(plot_tl_hist <- flux_eb_result_bigleaf %>%
    #filter(LAYER_L/LAI > 0.5) %>%
    ggplot(aes(x=LAYER_TA, y=EB_MODEL_Tl-273.15-LAYER_TA)) +
    geom_point(aes(color=LAYER_L/LAI), alpha=0.5) +
@@ -555,11 +555,7 @@ wref_g1_ta_tl_slopes <- flux_eb_result_wref_g1_sensitivity %>%
     slope_p975 = map_dbl(slope_lm, function(m) m$confidence.intervals[3, 5])) %>%
   ungroup()
 
-flux_eb_result %>%
-  mutate(is_homeo = EB_MODEL_Tl - 273.15 < LAYER_TA) %>%
-  select(SITE_NEON, LAYER_L, is_homeo) %>%
-  aggregate(is_homeo ~ SITE_NEON + LAYER_L, data=., FUN=mean) %>%
-  arrange(SITE_NEON, LAYER_L)
+
 
 # Compare relative flux magnitudes
 flux_eb_result %>%
