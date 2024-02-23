@@ -5,10 +5,13 @@ source("scripts/energy_balance/air.R")
 wref <- readxl::read_xlsx(
   "data_in/chris_still_wref_tir/WR_TIRtemp,Met,Flux_1hr_140101-151231_160425-with-metadata-column-headers.xlsx",
   sheet=2,
-  skip=1
+  skip=1,
+  col_types="numeric"
 ) %>%
-  # Time zone accounting
-  mutate(TIMESTAMP = parse_date_time(paste(Yr, DOY, Hr), "yjh", tz="Etc/GMT-8"),
+  # Time zone accounting. For some reason we have to flip the sign of the UTC
+  # offset. This is apparently a thing in core R, idk why it is like that.
+  # https://stackoverflow.com/questions/57518552/problem-with-converting-unix-time-zone-in-lubridate
+  mutate(TIMESTAMP = parse_date_time(paste(Yr, DOY, Hr), "yjh", tz="Etc/GMT+8"),
          TIMESTAMP = with_tz(TIMESTAMP, "UTC"))
 
 # Clean up names and units to match Ameriflux as closely as possible
