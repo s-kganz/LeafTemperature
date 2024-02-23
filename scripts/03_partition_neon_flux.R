@@ -32,23 +32,22 @@ run_reddy_proc <- function(site, lat, lon, table, ...) {
   
   print(names(result))
   
-  if ("R_ref_U50" %in% names(result)) {
+  if ("R_ref_uStar" %in% names(result)) {
     # Partitioning succeeded!
     result %>%
       # Collect variables of interest
-      select(Ustar_U50_Thres, R_ref_U50, E_0_U50, Reco_U50, GPP_U50_f) %>%
-      # Join these back with the original table. This assumes REddyProc doesn't
-      # eat any rows.
+      select(Ustar_uStar_Thres, R_ref_uStar, E_0_uStar, Reco_uStar, GPP_uStar_f) %>%
+      mutate(Ustar=table$Ustar) %>%
       return()
   } else {
     # Partitioning failed :(
     # Just fill with NAs so the script will still finish.
     result %>%
-      select(Ustar_U50_Thres) %>%
-      mutate(R_ref_U50=NA,
-             E_0_U50=NA,
-             Reco_U50=NA,
-             GPP_U50_f=NA) %>%
+      select(Ustar_uStar_Thres) %>%
+      mutate(R_ref_uStar=NA,
+             E_0_uStar=NA,
+             Reco_uStar=NA,
+             GPP_uStar_f=NA) %>%
       return()
   }
 }
@@ -139,13 +138,15 @@ process_neon_flux <- function() {
     # Select only high-quality flux measurements
     filter(qfqm.fluxCo2.nsae.qfFinl == 0, qfqm.fluxH2o.nsae.qfFinl == 0) %>%
     # Drop years where partitioning failed
-    filter(!is.na(R_ref_U50)) %>%
+    filter(!is.na(R_ref_uStar)) %>%
+    # Drop observations below the USTAR threshold
+    filter(Ustar > Ustar_uStar_Thres) %>%
     # Drop observations where modeled partitioning does not match measured NEE
-    mutate(NEE_model = Reco_U50 - GPP_U50_f,
+    mutate(NEE_model = Reco_uStar - GPP_uStar_f,
            reldiff = (NEE_model - data.fluxCo2.nsae.flux) / data.fluxCo2.nsae.flux) %>%
     filter(abs(reldiff) < 0.1) %>%
     # Drop observations where GPP < 0 since this is nonphysical
-    filter(GPP_U50_f >= 0) %>%
+    filter(GPP_uStar_f >= 0) %>%
     select(-NEE_model, -reldiff)
   
   processed_flux_df_qc %>%
@@ -177,24 +178,24 @@ process_old_wref_flux <- function() {
   )
   
   wref_flux_final <- wref_flux_processed %>%
+    select(-Ustar) %>%
     # Add in vars from original table
     cbind(wref_flux, .) %>%
-    # Drop observations where partitioning failed and where GPP < 0 because
-    # this is nonphysical
-    filter(!is.na(R_ref_U50),
-           GPP_U50_f >= 0) %>%
+    # Drop observations where partitioning failed, where GPP < 0 because
+    # this is nonphysical, and where Ustar < the threshold.
+    filter(!is.na(R_ref_uStar),
+           GPP_uStar_f >= 0,
+           Ustar > Ustar_uStar_Thres) %>%
     # Drop observations that model total NEE poorly
-    mutate(NEE_model = Reco_U50 - GPP_U50_f,
+    mutate(NEE_model = Reco_uStar - GPP_uStar_f,
            reldiff = (NEE_model - NEE) / NEE) %>%
     filter(abs(reldiff) < 0.1) %>%
-    # Drop observations where GPP < 0 since this is nonphysical
-    filter(GPP_U50_f >= 0) %>%
     select(-NEE_model, -reldiff)
   
   write_if_not_exist(wref_flux_final, "data_out/old_wref_flux_partition.csv")
 }
 
 if (sys.nframe() == 0) {
-  #process_neon_flux()
+  process_neon_flux()
   process_old_wref_flux()
 }
