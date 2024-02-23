@@ -17,8 +17,17 @@ meta <- read_csv("data_working/neon_site_metadata.csv") %>%
   mutate(L_best = ifelse(is.na(lai), L_dhp, lai))
 
 do_medlyn_fit <- function(tower, d, site, roughness_d, roughness_z0m, zr, zh) {
+  # Filtering ----
+  # See p. 697 in Knauer et al. (2018)
+  tower_filter <- tower %>%
+    filter(
+      TA > 5,
+      RH < 95,
+      LE > 0,
+      NETRAD - G > 0
+    )
   # Calculate conductances ----
-  tower_gs <- tower %>%
+  tower_gs <- tower_filter %>%
     bind_cols(
       # Calculate Ga_h and Gb_h
       aerodynamic.conductance(
@@ -91,7 +100,7 @@ do_medlyn_fit <- function(tower, d, site, roughness_d, roughness_z0m, zr, zh) {
   
   # V3: robustbase. This is the method used in Knauer et al. (2018) 
   fit_v3 <- nlrob(
-    Gs_mol ~ (1 + g1 / sqrt(VPD)) * (GPP_U50_f / CO2),
+    Gs_mol ~ (1 + g1 / sqrt(VPD)) * (GPP_uStar_f / CO2),
     data=tower_gs,
     algorithm="port",
     start=c(g1=3),
@@ -102,7 +111,7 @@ do_medlyn_fit <- function(tower, d, site, roughness_d, roughness_z0m, zr, zh) {
   str(coef(fit_v3))
   
   tower_gs$Gs_mol_predicted <- medlyn_gs(
-    tower_gs$GPP_U50_f, tower_gs$VPD, tower_gs$CO2, unname(coef(fit_v3))
+    tower_gs$GPP_uStar_f, tower_gs$VPD, tower_gs$CO2, unname(coef(fit_v3))
   )
   tower_gs$site <- site
   
@@ -265,7 +274,7 @@ old_wref_fit_driver <- function() {
   # Join partitioned flux, drop missing values
   wref_tower_flux <- wref_transp_only %>%
     inner_join(
-      wref_flux %>% select(DateTime, GPP_U50_f),
+      wref_flux %>% select(DateTime, GPP_uStar_f),
       by=c("TIMESTAMP"="DateTime")
     ) %>%
     filter(
