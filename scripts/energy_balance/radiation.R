@@ -204,7 +204,7 @@ absorbed_downwelling_longwave_radiation <- function(Ta, l, L,
 #' @export
 #'
 #' @examples
-outgoing_longwave_radiation <- function(Tl, ef=0.98) {
+outgoing_longwave_radiation <- function(Tl, ef=0.95) {
   2 * ef * eb_constants_$sb * Tl^4
 }
 
