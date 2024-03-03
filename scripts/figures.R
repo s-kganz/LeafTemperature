@@ -465,4 +465,87 @@ ggplot(site_info, aes(x=site_ameriflux, y=tower_height)) +
         axis.text = element_text(size=16),
         axis.title = element_text(size=16))
 
-ggsave("graphics/tower_canopy_height.png", width=9.5, height=4)
+# ggsave("graphics/tower_canopy_height.png", width=9.5, height=4)
+
+# WREF sensor positions ----
+new_var_heights <- amerifluxr::amf_var_info() %>%
+  filter(Site_ID == "US-xWR",
+         str_detect(Variable, 
+                    "H2O_\\d_\\d_\\d|PPFD_IN_\\d_\\d_\\d|TA_\\d_\\d_\\d|WS_\\d_\\d_\\d")) %>%
+  mutate(var_type = str_split_i(Variable, "_", 1),
+         var_type = case_match(
+           var_type,
+           "H2O" ~ "Humidity",
+           "PPFD" ~ "Light",
+           "TA" ~ "Air temp.",
+           "WS" ~ "Wind speed"
+         ),
+         Height_floor = floor(Height/2)*2)
+
+old_var_heights <- data.frame(
+  var_type=rep(c("Air temp.", "Humidity", "Wind speed", "Light"), 2),
+  Height=c(rep(2, 4), rep(70, 4))
+)
+  
+wref_zh <- 58
+wref_zr <- 74
+
+ggplot() +
+  # Tree outline
+  # geom_bar_pattern(
+  #   aes(x=1, y=wref_zh),
+  #   pattern_filename="graphics/tree_svgs/us-xwr.png",
+  #   stat="identity",
+  #   pattern="image",
+  #   alpha=0
+  # ) +
+  # # Tower top
+  # geom_bar_pattern(
+  #   aes(x=2, y=wref_zr),
+  #   fill="black",
+  #   width=0.2,
+  #   stat="identity",
+  #   pattern="image",
+  #   pattern_type = "none",
+  #   pattern_filename="graphics/tower_top.png",
+  #   pattern_scale=-1,
+  #   pattern_gravity="north",
+  #   pattern_yoffset=0.5,
+  #   alpha=0
+  # ) +
+  # # Tower tile
+  # geom_bar_pattern(
+  #   aes(x=2, y=wref_zr-8),
+  #   stat="identity",
+  #   fill="black",
+  #   color="black",
+  #   pattern="image",
+  #   pattern_type="tile",
+  #   pattern_filename="graphics/tower_tile.png",
+  #   pattern_filter="box",
+  #   pattern_scale=-1,
+  #   linewidth=1,
+  #   width=0.1,
+  #   alpha=0
+  # ) +
+  # Horizontal dashed line
+  geom_hline(yintercept=wref_zh, linetype="dashed", color="grey50") +
+  annotate("text", x=-Inf, y=wref_zh, vjust=-1, hjust=0, label=" Canopy height",
+           fontface="italic", color="grey50") +
+  # Modern sensor positions
+  geom_point(
+    mapping=aes(x="2018-Present", y=Height, color=var_type),
+    data=new_var_heights,
+    position=position_dodge(width=0.1)
+  ) +
+  # Old sensor positions
+  geom_point(
+    mapping=aes(x="2014-2015", y=Height, color=var_type),
+    data=old_var_heights,
+    position=position_dodge(width = 0.1)
+  ) +
+  theme_bw() +
+  theme(panel.grid.major.x=element_blank(),
+        panel.grid.minor.x=element_blank()) +
+  labs(x="", y="Height above ground (m)",
+       color="Sensor type")
