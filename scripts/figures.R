@@ -304,10 +304,10 @@ library(tidyverse)
 library(sf)
 library(sp)
 
-theme_set(theme_bw())
+use_sites <- c("ABBY", "DEJU", "JERC", "RMNP", "OSBS", "TALL", "WREF")
 
 site_info <- read_csv("data_working/neon_site_metadata.csv") %>%
-  filter(!(site_neon %in% c("YELL", "SOAP"))) %>%
+  filter(site_neon %in% use_sites) %>%
   st_as_sf(coords=c("tower_lon", "tower_lat"), crs=st_crs(4326)) %>%
   cbind(., st_coordinates(.))
 
@@ -324,7 +324,7 @@ hi  <- states %>% filter(STUSPS == "HI")
 # sorry, Puerto Rico :(
 l48 <- states %>% filter(!(STUSPS %in% c("AK", "HI", "PR")))
 
-label_size <- 10
+label_size <- 5
 
 # Inset maps
 (
@@ -332,7 +332,7 @@ label_size <- 10
     geom_sf() +
     geom_label_repel(
       data=sites_ak, 
-      mapping=aes(label=site_ameriflux, geometry=geometry),
+      mapping=aes(label=site_neon, geometry=geometry),
       stat="sf_coordinates",
       size=label_size
     ) +
@@ -346,14 +346,15 @@ label_size <- 10
     geom_sf() +
     geom_label_repel(
       data=sites_l48, 
-      mapping=aes(label=site_ameriflux, geometry=geometry),
+      mapping=aes(label=site_neon, geometry=geometry),
       stat="sf_coordinates",
       size=label_size
     ) +
     coord_sf(crs=st_crs(9311), 
              xlim = c(-2300000, 2600000), ylim = c(-2500000, 740000),
              expand=FALSE, datum=NA) +
-    labs(x="", y="")
+    labs(x="", y="") +
+    theme_bw()
 )
 
 # Add them all together
@@ -376,7 +377,7 @@ mainland +
     "line",
     x=c(ak_xmin, ak_xmax-150000, ak_xmax+200000),
     y=c(ak_ymax-50000, ak_ymax-50000, ak_ymin),
-    color="white"
+    color="black"
   ) +
   labs(x="", y="") +
   theme(
@@ -492,60 +493,69 @@ wref_zr <- 74
 
 ggplot() +
   # Tree outline
-  # geom_bar_pattern(
-  #   aes(x=1, y=wref_zh),
-  #   pattern_filename="graphics/tree_svgs/us-xwr.png",
-  #   stat="identity",
-  #   pattern="image",
-  #   alpha=0
-  # ) +
-  # # Tower top
-  # geom_bar_pattern(
-  #   aes(x=2, y=wref_zr),
-  #   fill="black",
-  #   width=0.2,
-  #   stat="identity",
-  #   pattern="image",
-  #   pattern_type = "none",
-  #   pattern_filename="graphics/tower_top.png",
-  #   pattern_scale=-1,
-  #   pattern_gravity="north",
-  #   pattern_yoffset=0.5,
-  #   alpha=0
-  # ) +
-  # # Tower tile
-  # geom_bar_pattern(
-  #   aes(x=2, y=wref_zr-8),
-  #   stat="identity",
-  #   fill="black",
-  #   color="black",
-  #   pattern="image",
-  #   pattern_type="tile",
-  #   pattern_filename="graphics/tower_tile.png",
-  #   pattern_filter="box",
-  #   pattern_scale=-1,
-  #   linewidth=1,
-  #   width=0.1,
-  #   alpha=0
-  # ) +
+  geom_bar_pattern(
+    aes(x="left", y=wref_zh),
+    pattern_filename="graphics/tree_svgs/us-xwr.png",
+    stat="identity",
+    pattern="image",
+    alpha=0
+  ) +
+  # Tower top
+  geom_bar_pattern(
+    aes(x="right", y=wref_zr),
+    fill="black",
+    width=0.2,
+    stat="identity",
+    pattern="image",
+    pattern_type = "none",
+    pattern_filename="graphics/tower_top.png",
+    pattern_scale=-1,
+    pattern_gravity="north",
+    pattern_yoffset=0.5,
+    alpha=0
+  ) +
+  # Tower tile
+  geom_bar_pattern(
+    aes(x="right", y=wref_zr-8),
+    stat="identity",
+    fill="black",
+    color="black",
+    pattern="image",
+    pattern_type="tile",
+    pattern_filename="graphics/tower_tile.png",
+    pattern_filter="box",
+    pattern_scale=-1,
+    linewidth=1,
+    width=0.1,
+    alpha=0
+  ) +
   # Horizontal dashed line
   geom_hline(yintercept=wref_zh, linetype="dashed", color="grey50") +
-  annotate("text", x=-Inf, y=wref_zh, vjust=-1, hjust=0, label=" Canopy height",
-           fontface="italic", color="grey50") +
+  # annotate("text", x=-Inf, y=wref_zh, vjust=-1, hjust=0, label=" Canopy height",
+  #          fontface="italic", color="grey50") +
   # Modern sensor positions
   geom_point(
-    mapping=aes(x="2018-Present", y=Height, color=var_type),
+    mapping=aes(x="right", y=Height, fill=var_type),
     data=new_var_heights,
-    position=position_dodge(width=0.1)
+    position=position_dodge(width=0.3),
+    size=6,
+    pch=21,
+    color="black"
   ) +
-  # Old sensor positions
-  geom_point(
-    mapping=aes(x="2014-2015", y=Height, color=var_type),
-    data=old_var_heights,
-    position=position_dodge(width = 0.1)
-  ) +
+  # # Old sensor positions
+  # geom_point(
+  #   mapping=aes(x="2014-2015", y=Height, color=var_type),
+  #   data=old_var_heights,
+  #   position=position_dodge(width = 0.1)
+  # ) +
   theme_bw() +
   theme(panel.grid.major.x=element_blank(),
-        panel.grid.minor.x=element_blank()) +
+        panel.grid.minor.x=element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        legend.text = element_text(size=14),
+        axis.title = element_text(size=14)) +
   labs(x="", y="Height above ground (m)",
-       color="Sensor type")
+       fill="")
+
+  
