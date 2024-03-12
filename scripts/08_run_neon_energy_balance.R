@@ -13,10 +13,10 @@ source("scripts/tower_util.R")
 
 ## Whole-canopy fluxes ----
 flux <- read_csv("data_out/cross_site_flux_partition_qc.csv") %>%
-  select(site, timeBgn, GPP_U50_f, data.fluxH2o.nsae.flux) %>%
+  select(site, timeBgn, GPP_uStar_f, data.fluxH2o.nsae.flux) %>%
   rename(SITE_NEON=site,
          TIMESTAMP=timeBgn,
-         TOC_GPP=GPP_U50_f,
+         TOC_GPP=GPP_uStar_f,
          TOC_LE=data.fluxH2o.nsae.flux) %>%
   mutate(
     # This process involves rearranging a lot of data. Later we will be grouping
@@ -332,7 +332,7 @@ write_if_not_exist(flux_eb_result_wref_g1_sensitivity, "data_out/model_runs/wref
 # Tl vs. Ta for all layers
 (plot_tl_ta <- flux_eb_result %>%
   mutate(EB_MODEL_dT = EB_MODEL_Tl - 273.15 - LAYER_TA) %>%
-  ggplot(aes(x=LAYER_TA, y=EB_MODEL_dT)) +
+  ggplot(aes(x=LAYER_TA, y=EB_MODEL_Tl-273.15)) +
   geom_point(alpha=0.5) +
   geom_hline(yintercept=0) +
   facet_grid(SITE_NEON ~ LAYER_L) +
@@ -393,34 +393,40 @@ flux_eb_models <- flux_eb_result %>%
        color="Proportion of total LAI") +
   theme_bw())
 
+site_set_1 <- c("DEJU", "ABBY", "RMNP", "WREF")
+
 (plot_regression_result <- flux_eb_models %>%
+    filter(!(SITE_NEON %in% site_set_1)) %>%
     mutate(LAYER_L = factor(LAYER_L)) %>%
     ggplot(aes(x=slope_p50, y=LAYER_L)) +
     geom_vline(xintercept=1, color="grey50", linetype="dashed") +
     geom_errorbar(aes(xmin=slope_p025, xmax=slope_p975)) +
-    geom_point(aes(fill=int_p50), color="black", size=3, pch=21) +
+    geom_point(aes(fill=int_p50), color="black", size=4, pch=21) +
     geom_label(aes(label=SITE_NEON), x=-Inf, y=Inf,
-               hjust="left", vjust="top") +
+               hjust="left", vjust="top", size=5) +
     scale_fill_distiller(
       type="div", palette="Spectral",
       limits=c(-1.5, 1.5)
     ) +
     scale_y_discrete(limits=rev) +
-    scale_x_continuous(limits=c(0.97, NA)) +
+    scale_x_continuous(limits=c(0.97, 1.15)) +
     facet_grid(SITE_NEON ~ .,
                scales="free_y", space="free") +
     theme_bw() +
     theme(strip.placement="outside",
           strip.background = element_blank(),
           strip.text.y = element_blank(),
-          panel.spacing = unit(1.5, "lines")
+          panel.spacing = unit(1.5, "lines"),
+          axis.title = element_text(size=18),
+          legend.title = element_text(size=14),
+          legend.text = element_text(size=14)
           ) +
     guides(fill = guide_colorbar(
       ticks.colour="black",
       frame.colour="black"
     )) +
-    labs(x=expression("T"[leaf]/"T"[air]~"regression slope"~bgroup("(", frac(degree*C, degree*C), ")")),
-         y=expression("Cumulative canopy LAI"~bgroup("(", frac(m^2, m^2), ")")),
+    labs(x=expression("T"[leaf]~"vs"~"T"[air]~"regression slope ("~degree*C*"/"*degree*C*")"),
+         y=expression("Cumulative LAI (m"^2~"m"^-2*")"),
          fill=expression("Model II\nregression intercept"~"("*degree*C*")"))
 )
 
@@ -445,7 +451,7 @@ flux_eb_models <- flux_eb_result %>%
 
 # Layer-by-layer plot of the two fluxes
 (plot_rad_fluxes <- flux_eb_result %>%
-  filter(!is.na(MEDLYN_g1)) %>%
+  filter(!is.na(MEDLYN_g1), SITE_NEON == "WREF") %>%
   select(SITE_NEON, LAYER_L, RAD_LW_ABS, RAD_SW_ABS) %>%
   mutate(LAYER_L = factor(LAYER_L)) %>%
   pivot_longer(c(RAD_SW_ABS, RAD_LW_ABS)) %>%
@@ -456,13 +462,15 @@ flux_eb_models <- flux_eb_result %>%
   scale_x_discrete(limits=rev) +
   scale_fill_hue(labels=c("Longwave radiation", "Shortwave radiation")) +
   theme_bw() +
-  labs(y=expression("Absorbed radiation"~bgroup("(", frac(W, m^2), ")")),
-       x=expression("Cumulative LAI"~bgroup("(", frac(m^2, m^2), ")")),
-       fill=""))
+  labs(y=expression("Absorbed radiation (W m"^-2*")"),
+       x=expression("Cumulative LAI (m"^2~"m"^-2*")"),
+       fill="")) +
+  theme(legend.text=element_text(size=18),
+        axis.title=element_text(size=18))
 
 # Layer by layer plot of GPP
 (plot_layer_gpp <- flux_ps_model %>%
-  filter(!is.na(MEDLYN_g1)) %>%
+  filter(!is.na(MEDLYN_g1), SITE_NEON=="WREF") %>%
   select(SITE_NEON, LAYER_L, PS_LAYER_GPP) %>%
   mutate(LAYER_L = factor(LAYER_L)) %>%
   ggplot(aes(x=factor(LAYER_L), y=PS_LAYER_GPP)) +
@@ -471,9 +479,10 @@ flux_eb_models <- flux_eb_result %>%
   coord_flip() +
   scale_x_discrete(limits=rev)  +
   theme_bw() +
-  labs(y=expression("Layer GPP"~bgroup("(", frac(mol~CO[2], m^2~s), ")")),
-       x=expression("Cumulative LAI"~bgroup("(", frac(m^2, m^2), ")")),
-       fill=""))
+  labs(y=expression("Layer GPP ("*mu*mol~CO[2]~m^-2~s^-1*")"),
+       x=expression("Cumulative LAI (m"^2~"m"^-2*")"),
+       fill="") +
+  theme(axis.title = element_text(size=18)))
 
 (plot_layer_gs <- flux_ps_model %>%
     filter(!is.na(PS_LAYER_GS)) %>%
@@ -556,7 +565,6 @@ wref_g1_ta_tl_slopes <- flux_eb_result_wref_g1_sensitivity %>%
   ungroup()
 
 
-
 # Compare relative flux magnitudes
 flux_eb_result %>%
   filter(SITE_NEON == "WREF") %>%
@@ -574,3 +582,21 @@ flux_eb_result %>%
        y="Cumulative LAI",
        fill="Flux source")
   
+# TL vs. TA for just WREF
+flux_eb_result %>%
+  filter(SITE_NEON == "WREF") %>%
+  mutate(canopy_pos = case_when(
+    LAYER_L %in% 0:2 ~ "Upper canopy",
+    LAYER_L %in% 3:6 ~ "Middle canopy",
+    LAYER_L %in% 7:9 ~ "Lower canopy"
+  )) %>%
+  ggplot(aes(x=LAYER_TA, y=EB_MODEL_Tl-273.15)) +
+  geom_abline(slope=1, intercept=0, color="red") +
+  geom_point(alpha=0.5) +
+  coord_equal() +
+  facet_wrap(~ canopy_pos) +
+  theme_bw() +
+  theme(axis.title=element_text(size=18),
+        strip.text=element_text(size=18)) +
+  labs(x=expression("Air temperature ("*degree*"C)"),
+       y=expression("Leaf temperature ("*degree*"C)"))
