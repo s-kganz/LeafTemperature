@@ -4,6 +4,7 @@ library(crossmatch)
 library(foreach)
 library(AICcPermanova)
 library(lmodel2)
+library(ggridges)
 source("scripts/tower_util.R")
 
 # Objective 1: validate EB model ----
@@ -243,6 +244,12 @@ wref_profile_perm_boot_df <- read_csv("data_out/502_analysis/wref_profile_bootst
 # write_csv(wref_profile_perm_boot_df, "data_out/502_analysis/wref_profile_bootstrap.csv")
 
 # Figures ----
+pres_theme <- theme(
+  axis.text = element_text(size=20),
+  strip.text = element_text(size=20),
+  axis.title = element_text(size=20)
+)
+
 ## 1:1 plots ----
 old_wref_1to1 <- old_wref_model_tir %>%
   ungroup() %>%
@@ -293,7 +300,8 @@ old_wref_1to1 %>%
   facet_grid(group ~ REF) +
   theme_bw() +
   labs(x=expression("Reference T"[L]~"("*degree*"C)"),
-       y=expression("Model T"[L]~"("*degree*"C)"))
+       y=expression("Model T"[L]~"("*degree*"C)")) +
+  pres_theme
 
 ## Vertical gradients ----
 wref_eb %>%
@@ -311,19 +319,22 @@ wref_eb %>%
   scale_x_discrete(limits=rev) +
   facet_wrap(~ name, strip.position="bottom", scales="free_x") +
   theme_bw() +
-  labs(y="",
-       x=expression("Cumulative LAI"~"(m"^2~"m"^-2*")")) +
+  labs(y="", x="") +
+       #x=expression("Cumulative LAI"~"(m"^2~"m"^-2*")")) +
   theme(legend.position="none",
         strip.placement="outside",
         strip.background = element_rect(fill=NA, linewidth=NA),
         strip.text = element_text(size=10),
-        panel.spacing = unit(2, "lines"))
+        panel.spacing = unit(2, "lines")) +
+  pres_theme +
+  theme(strip.text = element_text(size=18),
+        axis.text.y = element_blank())
 
 ## Variation explained histograms ----
 wref_profile_perm_boot_df %>%
   pivot_longer(everything()) %>%
   mutate(name = case_match(name,
-                          "LE" ~ "Latent heat",
+                          "LE" ~ "Transpiration",
                           "Rg" ~ "Downwelling radiation"
                           )) %>%
   ggplot(aes(x=value)) +
@@ -334,7 +345,9 @@ wref_profile_perm_boot_df %>%
   theme_bw() +
   theme(legend.position=c(1, 0.9),
         legend.justification = "right",
-        legend.background = element_rect(fill=NA))
+        legend.background = element_rect(fill=NA)) +
+  pres_theme +
+  theme(legend.text = element_text(size=14))
   
 ## Plot of model II slopes by layer ----
 wref_eb_linmods <- wref_eb %>%
@@ -364,7 +377,12 @@ wref_eb_linmods %>%
   guides(fill = guide_colorbar(
     ticks.colour="black",
     frame.colour="black"
-  ))
+  )) +
+  pres_theme +
+  theme(axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        legend.text = element_text(size=14),
+        legend.title = element_text(size=14))
 
 ## Proportion shaded GPP calculation ----
 wref_eb %>%
@@ -375,4 +393,36 @@ wref_eb %>%
   ) %>%
   summarize(SUNLIT_GPP = sum(PS_SUNLIT_GPP),
             SHADE_GPP = sum(PS_SHADE_GPP))
-  
+
+wref_eb_cool <- wref_eb %>%
+  filter(EB_MODEL_Tl - 273.15 - LAYER_TA < 0)
+
+## Density plots of mantel distances
+distance_df <- data.frame(
+  temp_dist=as.numeric(wref_dT_dist),
+  group_dist=as.numeric(wref_group_dist),
+  period="Radiometer"
+) %>% bind_rows(data.frame(
+  temp_dist=as.numeric(old_wref_dT_dist),
+  group_dist=as.numeric(old_wref_group_dist),
+  period="Thermal camera"
+))
+
+distance_df %>%
+  mutate(
+    group_dist = case_match(
+      group_dist,
+      0 ~ "Model vs. Model &\nSensor vs. Sensor",
+      1 ~ "Model vs. Sensor"
+    )
+  ) %>%
+  ggplot(aes(x=temp_dist, y=group_dist)) +
+  geom_density_ridges(aes(fill=group_dist)) +
+  facet_wrap(~ period, scales="free_x") +
+  labs(x="Temperature profile Euclidean distance (K)",
+       y="") +
+  theme_bw() +
+  theme(legend.position="none",
+        axis.title=element_text(size=20),
+        strip.text=element_text(size=20),
+        axis.text=element_text(size=20))
