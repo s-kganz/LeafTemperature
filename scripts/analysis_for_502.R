@@ -288,7 +288,10 @@ old_wref_1to1 %>%
   facet_grid(group ~ REF) +
   theme_bw() +
   labs(x=expression("Reference"~Delta*"T (K)"),
-       y=expression("Model"~Delta*"T (K)"))
+       y=expression("Model"~Delta*"T (K)")) +
+  theme(axis.text=element_text(size=16),
+        axis.title=element_text(size=16),
+        strip.text=element_text(size=16))
 
 # Same but leaf temperature instead of delta T
 old_wref_1to1 %>%
@@ -301,7 +304,9 @@ old_wref_1to1 %>%
   theme_bw() +
   labs(x=expression("Reference T"[L]~"("*degree*"C)"),
        y=expression("Model T"[L]~"("*degree*"C)")) +
-  pres_theme
+  theme(axis.text=element_text(size=16),
+        axis.title=element_text(size=16),
+        strip.text=element_text(size=16))
 
 ## Vertical gradients ----
 wref_eb %>%
@@ -319,16 +324,16 @@ wref_eb %>%
   scale_x_discrete(limits=rev) +
   facet_wrap(~ name, strip.position="bottom", scales="free_x") +
   theme_bw() +
-  labs(y="", x="") +
-       #x=expression("Cumulative LAI"~"(m"^2~"m"^-2*")")) +
+  labs(y="",
+       x=expression("Cumulative LAI"~"(m"^2~"m"^-2*")")) +
   theme(legend.position="none",
         strip.placement="outside",
         strip.background = element_rect(fill=NA, linewidth=NA),
         strip.text = element_text(size=10),
         panel.spacing = unit(2, "lines")) +
-  pres_theme +
-  theme(strip.text = element_text(size=18),
-        axis.text.y = element_blank())
+  theme(axis.text = element_text(size=16),
+        axis.title = element_text(size=16),
+        strip.text = element_text(size=16))
 
 ## Variation explained histograms ----
 wref_profile_perm_boot_df %>%
@@ -378,11 +383,10 @@ wref_eb_linmods %>%
     ticks.colour="black",
     frame.colour="black"
   )) +
-  pres_theme +
-  theme(axis.title.y = element_blank(),
-        axis.text.y = element_blank(),
-        legend.text = element_text(size=14),
-        legend.title = element_text(size=14))
+  theme(axis.text=element_text(size=16),
+        axis.title=element_text(size=16),
+        legend.text=element_text(size=14),
+        legend.title=element_text(size=16))
 
 ## Proportion shaded GPP calculation ----
 wref_eb %>%
@@ -398,31 +402,79 @@ wref_eb_cool <- wref_eb %>%
   filter(EB_MODEL_Tl - 273.15 - LAYER_TA < 0)
 
 ## Density plots of mantel distances
+
+# Separate model vs. model, sensor vs. sensor, and model vs. sensor
+custom_dist_fxn <- function(a, b) {
+  (a+b)/2
+}
+
+is_rad <- wref_mantel_table %>%
+  ungroup() %>%
+  mutate(is_rad = name == "RAD_dT") %>%
+  pull(is_rad)
+
+is_tir <- old_wref_mantel_table %>%
+  ungroup() %>%
+  mutate(is_tir = temp_src == "TIR_dT") %>%
+  pull(is_tir)
+
+rad_ternary_dist <- usedist::dist_make(as.matrix(is_rad), custom_dist_fxn)
+tir_ternary_dist <- usedist::dist_make(as.matrix(is_tir), custom_dist_fxn)
+
 distance_df <- data.frame(
   temp_dist=as.numeric(wref_dT_dist),
   group_dist=as.numeric(wref_group_dist),
+  tern_dist=as.numeric(rad_ternary_dist),
   period="Radiometer"
 ) %>% bind_rows(data.frame(
   temp_dist=as.numeric(old_wref_dT_dist),
   group_dist=as.numeric(old_wref_group_dist),
+  tern_dist=as.numeric(tir_ternary_dist),
   period="Thermal camera"
 ))
 
+# distance_df %>%
+#   mutate(
+#     group_dist = case_match(
+#       group_dist,
+#       0 ~ "Model vs. Model &\nSensor vs. Sensor",
+#       1 ~ "Model vs. Sensor"
+#     )
+#   ) %>%
+#   ggplot(aes(x=temp_dist, y=group_dist)) +
+#   geom_density_ridges(aes(fill=group_dist)) +
+#   facet_wrap(~ period, scales="free_x") +
+#   labs(x="Temperature profile Euclidean distance (K)",
+#        y="") +
+#   theme_bw() +
+#   theme(legend.position="none",
+#         axis.title=element_text(size=20),
+#         strip.text=element_text(size=20),
+#         axis.text=element_text(size=20))
+
 distance_df %>%
   mutate(
-    group_dist = case_match(
-      group_dist,
-      0 ~ "Model vs. Model &\nSensor vs. Sensor",
-      1 ~ "Model vs. Sensor"
+    tern_dist = case_match(
+      tern_dist,
+      0   ~ "Model vs. Model",
+      0.5 ~ "Model vs. Sensor",
+      1   ~ "Sensor vs. Sensor"
     )
   ) %>%
-  ggplot(aes(x=temp_dist, y=group_dist)) +
-  geom_density_ridges(aes(fill=group_dist)) +
+  ggplot(aes(x=temp_dist, y=tern_dist)) +
+  geom_density_ridges(aes(fill=tern_dist)) +
   facet_wrap(~ period, scales="free_x") +
-  labs(x="Temperature profile Euclidean distance (K)",
-       y="") +
+  labs(x="Temperature profile Euclidean distance (K)", y="") +
   theme_bw() +
   theme(legend.position="none",
-        axis.title=element_text(size=20),
-        strip.text=element_text(size=20),
-        axis.text=element_text(size=20))
+        axis.title=element_text(size=16),
+        strip.text=element_text(size=16),
+        axis.text=element_text(size=16))
+
+wref_eb %>%
+  select(EB_MODEL_LE, EB_MODEL_Rn, EB_MODEL_omega) %>%
+  pivot_longer(everything()) %>%
+  ggplot(aes(x=value)) +
+  geom_histogram() +
+  facet_wrap(~ name, scales="free") +
+  theme_bw()
