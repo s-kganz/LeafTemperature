@@ -1,6 +1,7 @@
 library(tidyverse)
 library(ggridges)
 library(readxl)
+library(ggpmisc)
 
 excel <- read_xlsx(
   "data_in/chris_still_wref_tir/WR_TIRtemp,Met,Flux_1hr_140101-151231_160425-with-metadata-column-headers.xlsx",
@@ -89,4 +90,22 @@ both_long %>%
   theme_bw() +
   labs(x="Excel mean Tcan (C)",
        y="Zenodo mean Tcan (C)")
+
+# Remake Fig. 2B
+zenodo %>%
+  mutate(
+    TOC_Tcan = rowMeans(zenodo %>% select(matches("Tcan_S[0-4]")))
+  ) %>%
+  filter(month(TIMESTAMP_START) %in% 5:9,
+         SW_IN > 25) %>%
+  ggplot(aes(x=TA_zenodo, y=TOC_Tcan)) +
+  geom_point(aes(color=hour(TIMESTAMP_START))) +
+  stat_ma_line(linetype="dashed", color="red") +
+  geom_abline(slope=1, intercept=0, color="red") +
+  scale_color_viridis_c() +
+  theme_bw() +
+  labs(x="Air temp (C)",
+       y="Tcan (C)",
+       color="Hour of day")
+  
              

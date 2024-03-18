@@ -1,8 +1,37 @@
 library(tidyverse)
+library(readxl)
 source("scripts/tower_util.R")
 source("scripts/energy_balance/air.R")
 
-wref <- readxl::read_xlsx(
+wref <- read_csv(
+  "data_in/chris_still_wref_tir/still_WR_flux_data.csv",
+  col_types=cols(CO2_1=col_double(), CO2_2=col_double())
+) %>%
+  # Time zone accounting. For some reason we have to flip the sign of the UTC
+  # offset. This is apparently a thing in core R, idk why it is like that.
+  # https://stackoverflow.com/questions/57518552/problem-with-converting-unix-time-zone-in-lubridate
+  mutate(
+    TIMESTAMP_START = as.character(TIMESTAMP_START),
+    TIMESTAMP_START = ymd_hm(TIMESTAMP_START, tz="Etc/GMT+8"),
+  )
+
+# Verify timezone is correct.
+# wref %>%
+#   mutate(tz_local = with_tz(TIMESTAMP_START, tz="US/Pacific")) %>%
+#   ggplot(aes(x=hour(tz_local), y=SW_IN)) + geom_boxplot(aes(group=hour(tz_local)))
+
+# Clean up names and units to match Ameriflux as closely as possible
+wref_clean <- wref %>%
+  rename(TIMESTAMP = TIMESTAMP_START, H = H.x, LE = LE.x) %>%
+  select(TIMESTAMP, matches("Tcan_S\\d"), everything(), -FC, -SC, -TS_1, -TS_2,
+         -SLE, -SH, -WD, -SWC_1, -SWC_2, -FAPAR, -ZL, -DateTime, -DOY.x, -(Y:s),
+         -LE.y, -H.y, -Tair, -Tsoil, -Reco_DT, -GPP_DT, -Yr, -Mon, -DOY.y,
+         -Hr, -tDOY, -TIMESTAMP_END, -Tcan_Avg, -SkyT, -Tcan_Avg_corr, -date,
+         -DOY, -hour, -rH, -VPD, -APAR, -PPFD_DIF, -H2O, -RECO_PI, -VPD_PI,
+         -NEE_PI, -Rg)
+
+# CO2 is totally NA so we have to pull that from the Excel sheet
+wref_xl <- readxl::read_xlsx(
   "data_in/chris_still_wref_tir/WR_TIRtemp,Met,Flux_1hr_140101-151231_160425-with-metadata-column-headers.xlsx",
   sheet=2,
   skip=1,
@@ -12,46 +41,21 @@ wref <- readxl::read_xlsx(
   # offset. This is apparently a thing in core R, idk why it is like that.
   # https://stackoverflow.com/questions/57518552/problem-with-converting-unix-time-zone-in-lubridate
   mutate(TIMESTAMP = parse_date_time(paste(Yr, DOY, Hr), "yjh", tz="Etc/GMT+8"),
-         TIMESTAMP = with_tz(TIMESTAMP, "UTC"))
+         TIMESTAMP = with_tz(TIMESTAMP, "UTC")) %>%
+  select(TIMESTAMP, `CO2_70(mg m-3)`) %>%
+  rename(CO2_mg_m3 = `CO2_70(mg m-3)`) %>%
+  drop_na()
 
-# Clean up names and units to match Ameriflux as closely as possible
-wref_clean <- wref %>%
-  select(TIMESTAMP, matches("Tcan_"), everything(), -matches("Ts_\\d"),
-         -matches("S1_\\d"), -Yr, -Mon, -DOY, -Hr, -tDOY, -`dir_02(o)`,
-         -matches("_2nd"), -TOTAL, -n_Tot, -factor_CO2, -factor_H2O,
-         -`H2O_70(g m-3)`, -matches("par_\\d"), -`F_H2O_70(g m-2 s-1)`,
-         -`dir_70(o)`) %>%
-  rename(
-    P = "prcpt1 (mm)",
-    PA = "p_70(kPa)",
-    TA_02 = "Ta_02(oC)",
-    RH_02 = "RH_02(%)",
-    WS_02 = "u_02(m s-1)",
-    G = "G(W m-2)",
-    SW_IN = "S_in(W m-2)",
-    SW_OUT = "S_out(W m-2)",
-    LW_IN = "L_in(W m-2)",
-    LW_OUT = "L_out(W m-2)",
-    NEE = "F_CO2_70(mg m-2 s-1)",
-    H = "F_Hs_70(W m-2)",
-    LE = "F_LE_70(W m-2)",
-    USTAR = "u_star(m s-1)",
-    TA_70 = "Ta_70(oC)",
-    RH_70 = "RH_70(%)",
-    WS_70 = "u_70(m s-1)",
-    SW_DIF = "DIFF",
-    CO2 = "CO2_70(mg m-3)",
-    Tcan_avg = "Tcan_AvgS0-9"
-  ) %>%
+wref_clean_co2 <- wref_clean %>%
+  inner_join(wref_xl, by="TIMESTAMP") %>%
   mutate(
     # mg CO2 --> umol CO2
-    NEE = NEE * 1e3 / 44.01,
-    CO2_umol_m3 = CO2 * 1e3 / 44.01,
-    rho_mol = dry_air_molar_density(TA_70+273.15, PA),
+    CO2_umol_m3 = CO2_mg_m3 * 1e3 / 44.01,
+    rho_mol = dry_air_molar_density(TA+273.15, PA),
     CO2_ppm = CO2_umol_m3 / rho_mol
     #rho_mol = dry_air_molar_density(TA_70+273.15, )
   ) %>%
-  select(-CO2_umol_m3, -rho_mol, -CO2) %>%
+  select(-CO2_umol_m3, -rho_mol, -CO2_mg_m3, -CO2_1, -CO2_2) %>%
   rename(CO2 = CO2_ppm)
 
-write_if_not_exist(wref_clean, "data_out/old_wref_clean.csv")
+write_if_not_exist(wref_clean_co2, "data_out/old_wref_clean.csv")
