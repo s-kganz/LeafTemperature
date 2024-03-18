@@ -600,3 +600,15 @@ flux_eb_result %>%
         strip.text=element_text(size=18)) +
   labs(x=expression("Air temperature ("*degree*"C)"),
        y=expression("Leaf temperature ("*degree*"C)"))
+
+# Shaded GPP calculation
+flux_eb_result %>%
+  mutate(pct_sunlit = exp(LIDAR_kd_black * LAYER_L),
+         GPP_sunlit = PS_LAYER_GPP * pct_sunlit,
+         GPP_shade  = PS_LAYER_GPP * (1 - pct_sunlit)) %>%
+  group_by(SITE_NEON) %>%
+  summarize(tot_gpp = sum(PS_LAYER_GPP),
+            tot_gpp_sunlit = sum(GPP_sunlit),
+            tot_gpp_shade = sum(GPP_shade),
+            prop_gpp_sunlit = tot_gpp_sunlit / tot_gpp,
+            prop_gpp_shade = tot_gpp_shade / tot_gpp)
