@@ -65,7 +65,10 @@ energy_balance_error <- function(Tl, Ta, u, gs, Pa, RH,
       Rn=Rn,
       H=H,
       LE=LE,
-      omega=omega
+      omega=omega,
+      gbH=gbH,
+      gR=gR,
+      gtot=gtot
     ))
   } else {
     return(error)
