@@ -3,6 +3,7 @@
 
 library(tidyverse)
 library(colorspace)
+library(metR)
 source("scripts/energy_balance/leaf_eb_numeric.R")
 
 
@@ -59,8 +60,12 @@ energy_balance_conductance_driver <- function(Ta, gs, gbH, Pa, RH, SW_dn, LW_dn,
 }
 
 # Set parameters ----
-gs_values <- seq(0.01, 0.5, length.out=100)
-gbH_values <- seq(0.75, 5, length.out=100)
+gs_min <- 0.01
+gs_max <- 0.5
+gbH_min <- 0.75
+gbH_max <- 5
+gs_values <- seq(gs_min, gs_max, length.out=100)
+gbH_values <- seq(gbH_min, gbH_max, length.out=100)
 
 grid <- expand.grid(gs_values, gbH_values) %>%
   rename(
@@ -99,14 +104,55 @@ eg_gbH <- data.frame(
         0.0105 * rho_mol * sqrt(0.5 / 0.1))
 )
 
-ggplot(grid_eb, aes(x=gs, y=gbH)) +
+# NEON model output
+neon_eb <- read_csv("data_out/model_runs/cross_site_eb.csv")
+
+base_contour_plot <- grid_eb %>%
+  ggplot(aes(x=gs, y=gbH)) +
   geom_contour_filled(aes(z=dT)) +
-  geom_hline(data=eg_gbH, mapping=aes(yintercept=gbH), color="grey20",
-             linetype="dashed") +
-  geom_text(data=eg_gbH, mapping=aes(y=gbH, label=label), x=0.02,
-            hjust=0, vjust=0, fontface="italic", color="grey20") +
   scale_fill_discrete_divergingx() +
   theme_bw() +
   labs(x=expression("g"[s]~"(mol m"^-2~"s"^-1*")"),
        y=expression("g"[bH]~"(mol m"^-2~"s"^-1*")"),
        fill=expression(Delta*"T (K)"))
+
+base_contour_plot +
+  geom_hline(data=eg_gbH, mapping=aes(yintercept=gbH), color="grey20",
+             linetype="dashed") +
+  geom_text(data=eg_gbH, mapping=aes(y=gbH, label=label), x=0.02,
+            hjust=0, vjust=0, fontface="italic", color="grey20")
+
+neon_eb_filter <- neon_eb %>%
+  # Discard extremes
+  filter(PS_LAYER_GS > gs_min, PS_LAYER_GS < gs_max,
+         EB_MODEL_gbH > gbH_min, EB_MODEL_gbH < gbH_max)
+
+ggplot(NULL) +
+  geom_point(data=neon_eb_filter, mapping=aes(x=PS_LAYER_GS, y=EB_MODEL_gbH),
+             alpha=0.1) +
+  geom_contour(data=grid_eb, 
+               mapping=aes(x=gs, y=gbH, z=dT),
+               lwd=1.7, color="black") +
+  geom_contour(data=grid_eb, 
+               mapping=aes(x=gs, y=gbH, z=dT, color=after_stat(level)),
+               lwd=1.5) +
+  scale_color_divergent() +
+  geom_label_contour(data=grid_eb, mapping=aes(x=gs, y=gbH, z=dT),
+                     skip=0, label.placer=label_placer_fraction()) +
+  theme_bw() +
+  labs(x=expression("Stomatal conductance"~"(mol m"^-2~"s"^-1*")"),
+       y=expression("Boundary layer heat conductance"~"(mol m"^-2~"s"^-1*")"),
+       color=expression(Delta*"T (K)"))
+
+neon_eb %>%
+  mutate(EB_MODEL_dT = EB_MODEL_Tl - LAYER_TA - 273.15) %>%
+  ggplot(aes(x=EB_MODEL_LE, y=EB_MODEL_H, color=EB_MODEL_dT)) +
+  geom_point(alpha=0.5) +
+  scale_color_divergent(mid="#f5f0d5") +
+  geom_abline(slope=1, intercept=0, color="red") +
+  theme_bw() +
+  labs(x=expression("Latent heat flux (W m"^-2*")"),
+       y=expression("Sensible heat flux (W m"^-2*")"),
+       color=expression(Delta*"T (K)"))
+
+       
