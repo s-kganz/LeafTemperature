@@ -602,7 +602,7 @@ flux_eb_result %>%
        y=expression("Leaf temperature ("*degree*"C)"))
 
 # Shaded GPP calculation
-flux_eb_result %>%
+shade_gpp <- flux_eb_result %>%
   mutate(pct_sunlit = exp(LIDAR_kd_black * LAYER_L),
          GPP_sunlit = PS_LAYER_GPP * pct_sunlit,
          GPP_shade  = PS_LAYER_GPP * (1 - pct_sunlit)) %>%
@@ -612,3 +612,43 @@ flux_eb_result %>%
             tot_gpp_shade = sum(GPP_shade),
             prop_gpp_sunlit = tot_gpp_sunlit / tot_gpp,
             prop_gpp_shade = tot_gpp_shade / tot_gpp)
+
+write_if_not_exist(shade_gpp, "data_out/model_runs/cross_site_shade_gpp.csv")
+
+shade_gpp_sorted <- shade_gpp %>% arrange(desc(prop_gpp_shade)) %>% 
+  pull(SITE_NEON)
+
+shade_gpp %>%
+  ggplot(aes(y=SITE_NEON, x=prop_gpp_shade)) +
+  geom_point() +
+  geom_vline(xintercept=0.552, color="red", linetype="dashed") +
+  scale_y_discrete(limits=shade_gpp_sorted) +
+  theme_bw() +
+  labs(x="Proportion shaded GPP", y="") +
+  theme(panel.grid.minor.x = element_blank(),
+        panel.grid.major.x = element_blank()) +
+  xlim(0, 0.7)
+
+
+# Temperature forcing
+# Precompute order of sites so that the bars are sorted
+Rn_site_order <- flux_eb_result %>%
+  group_by(SITE_NEON) %>%
+  summarize(mean_dT_Rn = mean(EB_MODEL_dT_Rn)) %>%
+  arrange(desc(mean_dT_Rn)) %>%
+  pull(SITE_NEON)
+
+flux_eb_result %>%
+  select(SITE_NEON, EB_MODEL_dT_LE, EB_MODEL_dT_Rn) %>%
+  pivot_longer(-SITE_NEON) %>%
+  ggplot(aes(x=factor(SITE_NEON, levels=Rn_site_order), y=value, fill=name)) +
+  stat_summary(geom="bar", fun=mean, position="dodge") +
+  stat_summary(geom="errorbar", fun.data=function(x) mean_se(x, 2), position=position_dodge(width=0.9), width=0.3) +
+  scale_fill_manual(
+    labels=c("Cooling from transpiration", "Warming from net radiation"),
+    values=hcl(h=c(195, 15), l=65, c=100)
+  ) +
+  theme_bw() +
+  theme(panel.grid.major.x = element_blank()) +
+  labs(x="", y="Temperature forcing (K)", fill="")
+  
