@@ -79,7 +79,6 @@ accuracy_metrics <- eb_result_rad_tcan_summary %>%
     bias = mean(EB_MODEL_Tl - TCAN),
     r2   = cor(EB_MODEL_Tl, TCAN)^2
   )
-
 # Plotting ----
 ggplot(eb_result_rad_tcan_summary, aes(x=TCAN, y=EB_MODEL_Tl)) +
   geom_bin2d() +
