@@ -171,22 +171,26 @@ lidar_constants_df <- lapply(lidar_constants, function(l) {
 }) %>% bind_rows()
 
 # Plotting ----
+use_sites <- c("ABBY", "DEJU", "JERC", "OSBS", "RMNP", "TALL", "WREF")
 # Extrapolate lines for beam/diffuse coefficients
 clai <- seq(0, 7, length.out=20)
 iv_io_extrapolate <- expand.grid(clai, 1:nrow(lidar_constants_df)) %>%
   cbind(lidar_constants_df[.$Var2, ]) %>%
   select(-Var2) %>% rename(clai = Var1) %>%
-  mutate(iv_io_beam = exp(kb_real * clai),
-         iv_io_diff = exp(kd_real * clai)) %>%
-  pivot_longer(contains("iv_io"))
+  mutate(Beam = exp(kb_real * clai),
+         Diffuse = exp(kd_real * clai)) %>%
+  pivot_longer(c(Beam, Diffuse))
 
 # Plot mean transmission points over the fitted line
-(plot_mean_transmission <- ggplot(iv_io_data, aes(x=cum_lai, y=iv_io_mean)) +
+(plot_mean_transmission <- iv_io_data %>%
+  filter(site %in% use_sites) %>%
+  ggplot(aes(x=cum_lai, y=iv_io_mean)) +
   geom_point(aes(color=proportion_diffuse_bin)) +
-  geom_line(data=iv_io_extrapolate, mapping=aes(x=clai, y=value, group=name, linetype=name)) +
+  geom_line(data=iv_io_extrapolate %>% filter(site %in% use_sites), 
+            mapping=aes(x=clai, y=value, group=name, linetype=name)) +
   facet_wrap(~ site, scales="free") +
   labs(x="Cumulative LAI", y="Proportion available light",
-       color="Proportion diffuse light", name="") +
+       color="Proportion diffuse light", linetype="") +
   scale_y_log10() + theme_bw())
 
 write_if_not_exist(lidar_constants_df, "data_out/neon_lidar_constants.csv")

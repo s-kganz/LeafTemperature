@@ -91,7 +91,7 @@ fit_pred <- fits %>%
 
 ggplot(NULL) +
   geom_point(mapping=aes(x=.Qabs, y=.A), data=flux_tower_join, alpha=0.1) +
-  geom_line(mapping=aes(x=Q, y=A, color="Fit"), data=fit_pred, lwd=1) +
+  geom_line(mapping=aes(x=Q, y=A, color="Fit"), data=fit_pred, lwd=1, show.legend = FALSE) +
   facet_wrap(~ site, scales="free_y") +
   labs(x="Top-of-canopy shortwave (W / m2)",
        y="Canopy photosynthesis (umol CO2 / m2 / s)",
