@@ -3,8 +3,6 @@ library(ggrepel)
 library(latex2exp)
 library(tidyverse)
 
-theme_set(ggdark::dark_theme_bw())
-
 # Resolution tradeoff figure ----
 tsats <- data.frame(
   name=c("MODIS", "Sentinel-3", "ECOSTRESS", "Landsat", "NASA G-LiHT", "NEON AOP"),
@@ -72,7 +70,7 @@ ggplot(tsats, aes(x=temporal, y=spatial)) +
 library(tidyverse)
 library(ggdark)
 
-theme_set(dark_theme_bw())
+# theme_set(dark_theme_bw())
 
 big_theme <- theme(
   axis.text = element_text(size=28),
@@ -393,118 +391,46 @@ mainland +
 
 
 # Tower/canopy heights ----
+library(tidyverse)
 library(ggpattern)
-library(ggdark)
 
-tower_color="grey50"
+tower_color <- "grey50"
+use_sites <- c("ABBY", "DEJU", "JERC", "OSBS", "RMNP", "TALL", "WREF")
 
-site_info <- site_info %>%
+
+site_meta <- read_csv("data_working/neon_site_metadata.csv") %>%
   mutate(filepath = file.path(
     "graphics", "tree_svgs", str_c(str_to_lower(site_ameriflux), ".png")
-  ))
+  )) %>%
+  filter(site_neon %in% use_sites)
 
-radiometer_positions <- all_tc_result %>%
-  select(SITE, z) %>% distinct()
+file_match_vector <- site_meta$filepath
+names(file_match_vector) <- site_meta$site_ameriflux
 
-file_match_vector <- site_info$filepath
-names(file_match_vector) <- site_info$site_ameriflux
 
-ggplot(site_info, aes(x=site_ameriflux, y=tower_height)) +
+sensor_regex <- paste0(c("T_CANOPY_\\d_\\d_\\d", "H2O_\\d_\\d_\\d",
+                        "TA_\\d_\\d_\\d", "WS_\\d_\\d_\\d"),
+                       collapse="|")
+
+sensor_heights <- amerifluxr::amf_var_info() %>%
+  filter(Site_ID %in% site_meta$site_ameriflux) %>%
+  filter(str_detect(Variable, sensor_regex)) %>%
+  select(Site_ID, Variable, Height) %>%
+  mutate(site_neon = site_meta$site_neon[match(Site_ID, site_meta$site_ameriflux)],
+         Height = floor(Height/2)*2,
+         vartype = ifelse(str_detect(Variable, "T_CANOPY"), "Radiometer", "Microclimate\nQuartet")) %>%
+  select(-Variable) %>%
+  distinct() %>%
+  # Drop radiometers below the canopy
+  filter(vartype != "Radiometer" | Height > 2)
+
+ggplot(site_meta, aes(x=site_ameriflux, y=tower_height)) +
   # Add the tower top first, this can make it easier to not clip
   # the tower top if the image is resized.
   geom_bar_pattern(
-    aes(y=tower_height+2),
+    aes(x="right", y=tower_height),
     fill="black",
     width=0.3,
-    stat="identity",
-    pattern="image",
-    pattern_type = "none",
-    pattern_filename="graphics/tower_top_light.png",
-    pattern_scale=-1,
-    pattern_gravity="north",
-    pattern_yoffset=0.5,
-    alpha=0
-  ) +
-  # Tower tile
-  geom_bar_pattern(
-    aes(y=tower_height-5),
-    stat="identity",
-    fill="black",
-    pattern="image",
-    pattern_type="tile",
-    pattern_filename="graphics/tower_tile_light.png",
-    pattern_filter="box",
-    pattern_scale=-1,
-    color=tower_color,
-    linewidth=1,
-    width=0.2,
-    alpha=0
-  ) +
-  # Tree outlines
-  # Now add the trees
-  geom_bar_pattern(
-    aes(pattern_filename=site_ameriflux, y=canopy_height),
-    stat="identity",
-    pattern="image",
-    pattern_gravity="south",
-    alpha=0
-  ) +
-  scale_pattern_filename_manual(values=file_match_vector) +
-  # Debug geom to make sure trees match the actual height
-  # geom_point(aes(y=canopy_height), color="green") +
-  # Radiometer heights
-  # geom_point(
-  #   mapping=aes(x=SITE, y=z), data=radiometer_positions,
-  #   color="red"
-  # ) +
-  # Suppress image legend
-  guides(pattern_filename="none") +
-  labs(x="", y="Height above ground (m)") +
-  dark_theme_bw() +
-  theme(panel.grid.major.x = element_blank(),
-        panel.grid.major.y = element_line(color="white"),
-        axis.text = element_text(size=16),
-        axis.title = element_text(size=16))
-
-# ggsave("graphics/tower_canopy_height.png", width=9.5, height=4)
-
-# WREF sensor positions ----
-new_var_heights <- amerifluxr::amf_var_info() %>%
-  filter(Site_ID == "US-xWR",
-         str_detect(Variable, 
-                    "H2O_\\d_\\d_\\d|PPFD_IN_\\d_\\d_\\d|TA_\\d_\\d_\\d|WS_\\d_\\d_\\d")) %>%
-  mutate(var_type = str_split_i(Variable, "_", 1),
-         var_type = case_match(
-           var_type,
-           "H2O" ~ "Humidity",
-           "PPFD" ~ "Light",
-           "TA" ~ "Air temp.",
-           "WS" ~ "Wind speed"
-         ),
-         Height_floor = floor(Height/2)*2)
-
-old_var_heights <- data.frame(
-  var_type=rep(c("Air temp.", "Humidity", "Wind speed", "Light"), 2),
-  Height=c(rep(2, 4), rep(70, 4))
-)
-  
-wref_zh <- 58
-wref_zr <- 74
-
-ggplot() +
-  # Tree outline
-  geom_bar_pattern(
-    aes(x="left", y=wref_zh),
-    pattern_filename="graphics/tree_svgs/us-xwr.png",
-    stat="identity",
-    pattern="image",
-    alpha=0
-  ) +
-  # Tower top
-  geom_bar_pattern(
-    aes(x="right", y=wref_zr),
-    fill="black",
-    width=0.2,
     stat="identity",
     pattern="image",
     pattern_type = "none",
@@ -516,46 +442,53 @@ ggplot() +
   ) +
   # Tower tile
   geom_bar_pattern(
-    aes(x="right", y=wref_zr-8),
+    aes(x="right", y=tower_height*0.8),
     stat="identity",
     fill="black",
-    color="black",
     pattern="image",
     pattern_type="tile",
     pattern_filename="graphics/tower_tile.png",
     pattern_filter="box",
     pattern_scale=-1,
+    color=tower_color,
     linewidth=1,
-    width=0.1,
+    width=0.2,
     alpha=0
   ) +
-  # Horizontal dashed line
-  geom_hline(yintercept=wref_zh, linetype="dashed", color="grey50") +
-  # annotate("text", x=-Inf, y=wref_zh, vjust=-1, hjust=0, label=" Canopy height",
-  #          fontface="italic", color="grey50") +
-  # Modern sensor positions
-  geom_point(
-    mapping=aes(x="right", y=Height, fill=var_type),
-    data=new_var_heights,
-    position=position_dodge(width=0.3),
-    size=6,
-    pch=21,
-    color="black"
+  # Now add the trees
+  geom_bar_pattern(
+    aes(pattern_filename=site_ameriflux, y=canopy_height, x="left"),
+    stat="identity",
+    pattern="image",
+    pattern_gravity="south",
+    alpha=0
   ) +
-  # # Old sensor positions
-  # geom_point(
-  #   mapping=aes(x="2014-2015", y=Height, color=var_type),
-  #   data=old_var_heights,
-  #   position=position_dodge(width = 0.1)
-  # ) +
+  scale_pattern_filename_manual(values=file_match_vector) +
+  # Debug geom to make sure trees match the actual height
+  # geom_point(aes(y=canopy_height, x="left"), color="green") +
+  geom_point(
+    data=sensor_heights,
+    mapping=aes(x="right", y=Height, fill=vartype, shape=vartype),
+    position=position_dodge(width=0.5),
+    col="black",
+    size=2.5
+  ) +
+  scale_shape_manual(values=c(21, 25)) +
+  geom_label(aes(label=site_neon), x=-Inf, y=Inf, vjust=1, hjust=0) +
+  facet_wrap(~ site_neon, scales="free_y") +
+  # suppress image legend
+  guides(pattern_filename="none") +
+  labs(x="", y="Height above ground (m)", fill="", shape="") +
   theme_bw() +
-  theme(panel.grid.major.x=element_blank(),
-        panel.grid.minor.x=element_blank(),
+  theme(panel.grid.major.x = element_blank(),
         axis.text.x = element_blank(),
         axis.ticks.x = element_blank(),
-        legend.text = element_text(size=14),
-        axis.title = element_text(size=14)) +
-  labs(x="", y="Height above ground (m)",
-       fill="")
+        strip.text.x = element_blank(),
+        legend.text = element_text(size=12),
+        panel.spacing = unit(1.5, "lines"),
+        axis.text.y = element_text(size=12),
+        axis.title.y = element_text(size=14))
+
+# ggsave("graphics/tower_canopy_height.png", width=9.5, height=4)
 
   
