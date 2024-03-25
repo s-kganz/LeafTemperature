@@ -2,20 +2,15 @@
 *.Rproj
 *.Rproj.user/
 *.Rhistory
-
 # Scratch dirs
 data_in/
 data_working/
 data_out/
-graphics/
 presentations/
 scripts/old
-
 # Office files
 *.docx
 *.pptx
-
 # etc
 *.swp
-
 .Rproj.user
