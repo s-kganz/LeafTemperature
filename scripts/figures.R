@@ -1,494 +1,470 @@
-library(ggplot2)
-library(ggrepel)
-library(latex2exp)
-library(tidyverse)
+# This file provides functions to recreate figures in the paper. By default,
+# all the necessary data gets loaded instead of just the data needed
+# for a particular figure.
 
-# Resolution tradeoff figure ----
-tsats <- data.frame(
-  name=c("MODIS", "Sentinel-3", "ECOSTRESS", "Landsat", "NASA G-LiHT", "NEON AOP"),
-  spatial=c(1000, 1000, 70, 30, 0.1, 0.1),
-  temporal=c(24, 24, 24, 192, 8760, 8760)
-)
-
-anno_color <- "lightblue"
-anno_size <- 12
-
-ggplot(tsats, aes(x=temporal, y=spatial)) +
-  geom_point() +
-
-  geom_smooth(method="lm", se=FALSE, linetype="dashed", color="gray") +
-  annotate("text", x=1000, y=4, label="← Resolution Tradeoff →", angle=-40,
-           color="gray", size=anno_size) +
-  # Annotations for LiDAR and flux tower resolution
-  # geom_vline(xintercept=0.5, color=anno_color) +
-  # geom_hline(yintercept=0.1, color=anno_color) +
-  # annotate("text", y=0.15, x=10, label="LiDAR",
-  #          color=anno_color, size=anno_size, fontface="italic", alpha=0.5) +
-  # annotate("text", x=0.55, y=10, label="Flux tower",
-  #          color=anno_color, hjust="left", size=anno_size, fontface="italic",
-  #          alpha=0.5) +
-  # annotate("point", x=0.5, y=0.1, pch=10, color=anno_color, size=4) +
-  geom_label_repel(aes(label=name), size=anno_size - 2) +
-  labs(x="Temporal Resolution",
-       y="Spatial Resolution") +
-  scale_x_log10(breaks=c(2.4, 24, 240, 2400),
-                labels=c("Hourly", "Daily", "Weekly", "Yearly"),
-                limits=c(10^-0.31, 10^4)) +
-  scale_y_log10(breaks=10^(-1:3),
-                labels=sapply(-1:3, function(exp) TeX(paste0("10$^{", exp, "}$ m")))) +
-  #ggtitle("Our model overcomes the resolution tradeoff in traditional thermal data") +
-  theme(
-    axis.text = element_text(size=36),
-    axis.title = element_text(size=40)
-  )
-
-#ggsave("graphics/resolution_figure2.png", width=19.2, height=10.8, units="in",
-#       dpi=600)
-
-ggplot(tsats, aes(x=temporal, y=spatial)) +
-  geom_point() +
-  geom_smooth(method="lm", se=FALSE, linetype="dashed", color="gray") +
-  geom_label_repel(aes(label=name)) +
-  annotate("text", x=1000, y=4, label="← Resolution Tradeoff →", angle=-37,
-           color="gray", size=anno_size) +
-  labs(x="Temporal Resolution",
-       y="Spatial Resolution") +
-  scale_x_log10(breaks=c(2.4, 24, 240, 2400),
-                labels=c("Hourly", "Daily", "Weekly", "Yearly"),
-                limits=10^c(-0.31, 4)) +
-  scale_y_log10(breaks=10^(-1:3),
-                labels=sapply(-1:3, function(exp) TeX(paste0("10$^{", exp, "}$ m"))),
-                limits=10^c(-1, 3)) +
-  #ggtitle("Our model overcomes the resolution tradeoff in traditional thermal data") +
-  theme(
-    axis.text = element_text(size=18),
-    axis.title = element_text(size=20)
-  )
-
-# Freilich figures ----
-
-library(tidyverse)
-library(ggdark)
-
-# theme_set(dark_theme_bw())
-
-big_theme <- theme(
-  axis.text = element_text(size=28),
-  axis.title = element_text(size=32),
-  legend.title = element_text(size=28),
-  legend.text = element_text(size=28),
-  strip.text = element_text(size=24),
-  panel.grid = element_line(linewidth=1, color=rgb(.2, .2, .2))
-)
-
-all_tc_result <- read_csv("data_out/cross_site_gs_tc_result.csv") %>%
-  filter(z > 1) %>%
-  group_by(SITE) %>%
-  mutate(
-    position = case_when(
-      abs(z - max(z)) < 1 ~ "Crown",
-      abs(z - min(z)) < 1 ~ "Lower",
-      .default="Middle"
-    ),
-    position = factor(position, c("Crown", "Middle", "Lower"))
-  ) %>% ungroup()
-
-
-## 1:1 plot with bias annotation ----
-bias_df <- all_tc_result %>%
-  group_by(SITE, position) %>%
-  summarize(bias = mean(t_canopy_model_still_Tl - t_canopy, na.rm=TRUE)) %>%
-  mutate(bias_pretty = str_c("Bias = ", format(round(bias, digits=2)), " °C"))
-
-all_tc_result %>%
-  #filter(SITE %in% c("US-xWR", "US-xTE")) %>%
-  #filter(t_canopy < (T_lw - 273.15) + 10) %>%
-  group_by(SITE) %>%
-  #sample_frac(0.5) %>%
-  ggplot(aes(x=t_canopy, y=t_canopy_model_still_Tl)) +
-  geom_bin2d(bins=50) +
-  geom_abline(slope=1, intercept=0) +
-  # geom_text(
-  #   data=bias_df %>% filter(SITE %in% c("US-xTE", "US-xWR")), 
-  #   mapping=aes(label=bias_pretty),
-  #   x=15, y=40, size=6
-  # ) +
-  coord_equal() +
-  scale_fill_distiller(palette="RdYlBu", limits=c(0, 250), oob=scales::squish) +
-  facet_grid(position ~ SITE) +
-  labs(x="Tower radiometer temperature (°C)",
-       y="Modeled leaf temperature (°C)",
-       fill="Count") +
-  big_theme +
-  theme(strip.text = element_text(size=18),
-        axis.text = element_text(size=18),
-        axis.title = element_text(size=20),
-        legend.text = element_text(size=18),
-        legend.title = element_text(size=20))
-
-#ggsave("graphics/poster_one_to_one.png", dpi=300, height=10.8)
-
-## Mean LE/Rn forcing ----
-all_tc_forcing <- all_tc_result %>%
-  mutate(
-    Rn_forcing = t_notransp_model_still_Tl - ta_interp,
-    LE_forcing = t_canopy_model_still_Tl - t_notransp_model_still_Tl,
-    dT = Rn_forcing + LE_forcing
-  )
-
-forcing_means <- all_tc_forcing %>%
-  select(SITE, position, Rn_forcing, LE_forcing, dT) %>%
-  pivot_longer(-c(SITE, position)) %>%
-  group_by(SITE, position, name) %>%
-  summarize(median = median(value, na.rm=TRUE),
-            sdev = sd(value, na.rm=TRUE))
-
-forcing_means %>%
-  filter(name != "dT") %>%
-  ggplot(aes(x=position, y=median)) +
-  geom_bar(aes(fill=name), stat="identity") +
-  #geom_errorbar(aes(color=name, ymin=median - sdev, ymax=median + sdev)) +
-  geom_point(
-    data=forcing_means %>% filter(name == "dT"),
-    mapping=aes(y=median, x=position, color="Net"),
-    size=4
-  ) +
-  geom_vline(xintercept=0, color="white", linetype="dashed") +
-  coord_flip() +
-  scale_x_discrete(limits=rev) +
-  scale_fill_manual(
-    values=c(
-    "LE_forcing"="#158FFF",
-    "Rn_forcing"="#FF1919"
-    ),
-    labels=c(expression(paste(lambda, "E")), "Rn")
-  ) +
-  scale_color_manual(
-    values=c("Net"="white")
-  ) +
-  guides(fill  = guide_legend(order = 1),
-         color = guide_legend(order = 2, title=NULL)) +
-  facet_wrap(~ SITE) +
-  labs(
-    x=expression(paste(T[leaf], " - ", T[air], " (K)")), 
-    y="", fill="", color=""
-  )# +
-  big_theme
-
-#ggsave("graphics/freilich_mean_forcing.png", dpi=300, height=10.8, width=16)
-
-## Second version to explain the plot ----
-fake_forcing <- data.frame(
-  name=c("Rn_forcing", "LE_forcing"),
-  value=c(1, -2)
-)
-
-ggplot(fake_forcing, aes(y=value, fill=name)) + 
-  geom_bar(aes(x=1), stat="identity") +
-  coord_flip()
-
-fake_forcing %>%
-  ggplot(aes(x=value, y=1)) +
-  geom_bar(aes(fill=name), stat="identity") + 
-  geom_vline(xintercept=0, color="white", linetype="dashed") +
-  scale_fill_manual(
-    values=c(
-      "LE_forcing"="#158FFF",
-      "Rn_forcing"="#FF1919"
-    ),
-    labels=c(expression(paste(lambda, "E")), "Rn")
-  ) +
-  scale_color_manual(
-    values=c("Net"="white")
-  ) +
-  guides(fill  = guide_legend(order = 1),
-         color = guide_legend(order = 2, title=NULL)) +
-  labs(
-    x=expression(paste(T[leaf], " - ", T[air], " (K)")), 
-    y="", fill="", color=""
-  )
-  big_theme
-
-## Proportion of variance explained ----
-all_tc_linmods <- all_tc_result %>%
-  mutate(
-    Rn_forcing = t_notransp_model_still_Tl - ta_interp,
-    LE_forcing = t_canopy_model_still_Tl - t_notransp_model_still_Tl,
-    dT = Rn_forcing + LE_forcing
-  ) %>%
-  group_by(SITE) %>%
-  select(SITE, t_canopy_model_still_Tl, dT, Rn_forcing, LE_forcing, ta_interp, 
-         ws_interp, vpd, sw_in, gs_interp) %>%
-  nest(data=-c(SITE)) %>%
-  mutate(
-    anova_forcing = map(data, function (d) {
-      anova(lm(
-        t_canopy_model_still_Tl ~ ta_interp + Rn_forcing + LE_forcing, data=d
-      ))
-    }),
-    anova_dt = map(data, function(d) {
-      anova(lm(dT ~ ta_interp + ws_interp + vpd + gs_interp + sw_in, data=d))
-    }),
-    varexp_forcing = map(anova_forcing, function(av) {
-      avss <- av$"Sum Sq"
-      prop_exp <- avss / sum(avss)
-      
-      data.frame(var = rownames(av), prop_exp=prop_exp)
-    }),
-    varexp_dt = map(anova_dt, function(av) {
-      avss <- av$"Sum Sq"
-      prop_exp <- avss / sum(avss)
-      
-      data.frame(var = rownames(av), prop_exp=prop_exp)
-    })
-  )
-
-# ... in T_leaf
-all_tc_linmods %>%
-  select(SITE, varexp_forcing) %>%
-  unnest(varexp_forcing, names_sep="_") %>%
-  filter(varexp_forcing_var != "Residuals") %>%
-  ggplot(aes(x=SITE, y=varexp_forcing_prop_exp)) +
-  geom_bar(aes(fill=varexp_forcing_var), stat="identity", position="dodge") +
-  facet_wrap(~ SITE, nrow=3, scales="free_x") +
-  theme(axis.text.x = element_blank()) +
-  labs(x="", y="Proportion of variance", fill="") +
-  scale_fill_manual(
-    values=c(
-      "LE_forcing"="#158FFF",
-      "Rn_forcing"="#FF1919",
-      "ta_interp"="#DDDDDD"
-    ),
-    labels=c(expression(paste(lambda, "E")), "Rn", "Air temperature")
-  ) +
-  big_theme +
-  theme(legend.text.align = 0)
-
-#ggsave("graphics/freilich_tleaf_var.png", dpi=300, height=10.8, width=16)
-
-# ... in dT
-all_tc_linmods %>%
-  select(SITE, varexp_dt) %>%
-  unnest(varexp_dt, names_sep="_") %>%
-  filter(varexp_dt_var != "Residuals") %>%
-  mutate(
-    varexp_dt_var = case_match(
-      varexp_dt_var,
-      "gs_interp" ~ "Stomatal conductance",
-      "sw_in" ~ "Solar radiation",
-      "ta_interp" ~ "Air temperature",
-      "vpd" ~ "Vapor pressure deficit",
-      "ws_interp" ~ "Wind speed"
-    )
-  ) %>%
-  ggplot(aes(x=SITE, y=varexp_dt_prop_exp)) +
-  geom_bar(aes(fill=varexp_dt_var), stat="identity", position="dodge") +
-  facet_wrap(~ SITE, nrow=3, scales="free_x") +
-  theme(axis.text.x = element_blank()) +
-  labs(x="", y="Proportion of variance", fill="") +
-  ylim(0, 1) +
-  big_theme +
-  theme(legend.text.align = 0)
-
-#ggsave("graphics/freilich_dt_var.png", dpi=300, height=10.8, width=16)
-
-
-# Site map ----
-library(maps)
-library(mapdata)
-library(ggplot2)
-library(ggrepel)
-library(tidyverse)
-library(sf)
-library(sp)
-
-use_sites <- c("ABBY", "DEJU", "JERC", "RMNP", "OSBS", "TALL", "WREF")
-
-site_info <- read_csv("data_working/neon_site_metadata.csv") %>%
-  filter(site_neon %in% use_sites) %>%
-  st_as_sf(coords=c("tower_lon", "tower_lat"), crs=st_crs(4326)) %>%
-  cbind(., st_coordinates(.))
-
-sites_l48 <- site_info %>% filter(Y < 49)
-sites_ak  <- site_info %>% filter(Y > 49)
-stopifnot(nrow(sites_l48) + nrow(sites_ak) == nrow(site_info))
-
-# N.b. it is challenging to plot lower 48 and Alaska in their true position,
-# so we use insets.
-states <- read_sf("data_in/cb_2022_us_state_20m/cb_2022_us_state_20m.shp")
-
-ak  <- states %>% filter(STUSPS == "AK")
-hi  <- states %>% filter(STUSPS == "HI")
-# sorry, Puerto Rico :(
-l48 <- states %>% filter(!(STUSPS %in% c("AK", "HI", "PR")))
-
-label_size <- 5
-
-# Inset maps
-(
-  ak_map <- ggplot(data=ak) +
-    geom_sf() +
-    geom_label_repel(
-      data=sites_ak, 
-      mapping=aes(label=site_neon, geometry=geometry),
-      stat="sf_coordinates",
-      size=label_size
-    ) +
-    coord_sf(crs=st_crs(3467)) +
-    theme_void()
-)
-
-# Now the mainland map
-(
-  mainland <- ggplot(data=l48) +
-    geom_sf() +
-    geom_label_repel(
-      data=sites_l48, 
-      mapping=aes(label=site_neon, geometry=geometry),
-      stat="sf_coordinates",
-      size=label_size
-    ) +
-    coord_sf(crs=st_crs(9311), 
-             xlim = c(-2300000, 2600000), ylim = c(-2500000, 740000),
-             expand=FALSE, datum=NA) +
-    labs(x="", y="") +
-    theme_bw()
-)
-
-# Add them all together
-ak_xmin <- -2200000
-ak_ymin <- -2400000
-scale <- 2.5
-
-ak_xmax <- ak_xmin + (1600000 - (-2400000))/scale
-ak_ymax <- ak_ymin + (2500000 - 200000)/scale
-
-mainland +
-  annotation_custom(
-    grob = ggplotGrob(ak_map),
-    xmin = ak_xmin,
-    xmax = ak_xmin + (1600000 - (-2400000))/scale,
-    ymin = ak_ymin,
-    ymax = ak_ymin + (2500000 - 200000)/scale
-  ) +
-  annotate(
-    "line",
-    x=c(ak_xmin, ak_xmax-150000, ak_xmax+200000),
-    y=c(ak_ymax-50000, ak_ymax-50000, ak_ymin),
-    color="black"
-  ) +
-  labs(x="", y="") +
-  theme(
-    panel.background = element_rect(fill = "transparent",
-                                    colour = NA_character_),
-    panel.border = element_blank(),
-    plot.background = element_rect(fill = "transparent",
-                                   colour = NA_character_)
-  )
-  
-# ggsave("graphics/site_map.png", dpi=300, width=19.20, height=10.80,
-#        bg="transparent")
-
-
-# Tower/canopy heights ----
 library(tidyverse)
 library(ggpattern)
+library(amerifluxr)
+library(photosynthesis)
+library(lmodel2)
+library(metR)
 
-tower_color <- "grey50"
-use_sites <- c("ABBY", "DEJU", "JERC", "OSBS", "RMNP", "TALL", "WREF")
-
-
-site_meta <- read_csv("data_working/neon_site_metadata.csv") %>%
-  mutate(filepath = file.path(
-    "graphics", "tree_svgs", str_c(str_to_lower(site_ameriflux), ".png")
-  )) %>%
-  filter(site_neon %in% use_sites)
-
-file_match_vector <- site_meta$filepath
-names(file_match_vector) <- site_meta$site_ameriflux
-
-
-sensor_regex <- paste0(c("T_CANOPY_\\d_\\d_\\d", "H2O_\\d_\\d_\\d",
-                        "TA_\\d_\\d_\\d", "WS_\\d_\\d_\\d"),
-                       collapse="|")
-
-sensor_heights <- amerifluxr::amf_var_info() %>%
-  filter(Site_ID %in% site_meta$site_ameriflux) %>%
-  filter(str_detect(Variable, sensor_regex)) %>%
-  select(Site_ID, Variable, Height) %>%
-  mutate(site_neon = site_meta$site_neon[match(Site_ID, site_meta$site_ameriflux)],
-         Height = floor(Height/2)*2,
-         vartype = ifelse(str_detect(Variable, "T_CANOPY"), "Radiometer", "Microclimate\nQuartet")) %>%
-  select(-Variable) %>%
-  distinct() %>%
-  # Drop radiometers below the canopy
-  filter(vartype != "Radiometer" | Height > 2)
-
-ggplot(site_meta, aes(x=site_ameriflux, y=tower_height)) +
-  # Add the tower top first, this can make it easier to not clip
-  # the tower top if the image is resized.
-  geom_bar_pattern(
-    aes(x="right", y=tower_height),
-    fill="black",
-    width=0.3,
-    stat="identity",
-    pattern="image",
-    pattern_type = "none",
-    pattern_filename="graphics/tower_top.png",
-    pattern_scale=-1,
-    pattern_gravity="north",
-    pattern_yoffset=0.5,
-    alpha=0
-  ) +
-  # Tower tile
-  geom_bar_pattern(
-    aes(x="right", y=tower_height*0.8),
-    stat="identity",
-    fill="black",
-    pattern="image",
-    pattern_type="tile",
-    pattern_filename="graphics/tower_tile.png",
-    pattern_filter="box",
-    pattern_scale=-1,
-    color=tower_color,
-    linewidth=1,
-    width=0.2,
-    alpha=0
-  ) +
-  # Now add the trees
-  geom_bar_pattern(
-    aes(pattern_filename=site_ameriflux, y=canopy_height, x="left"),
-    stat="identity",
-    pattern="image",
-    pattern_gravity="south",
-    alpha=0
-  ) +
-  scale_pattern_filename_manual(values=file_match_vector) +
-  # Debug geom to make sure trees match the actual height
-  # geom_point(aes(y=canopy_height, x="left"), color="green") +
-  geom_point(
-    data=sensor_heights,
-    mapping=aes(x="right", y=Height, fill=vartype, shape=vartype),
-    position=position_dodge(width=0.5),
-    col="black",
-    size=2.5
-  ) +
-  scale_shape_manual(values=c(21, 25)) +
-  geom_label(aes(label=site_neon), x=-Inf, y=Inf, vjust=1, hjust=0) +
-  facet_wrap(~ site_neon, scales="free_y") +
-  # suppress image legend
-  guides(pattern_filename="none") +
-  labs(x="", y="Height above ground (m)", fill="", shape="") +
-  theme_bw() +
-  theme(panel.grid.major.x = element_blank(),
-        axis.text.x = element_blank(),
-        axis.ticks.x = element_blank(),
-        strip.text.x = element_blank(),
-        legend.text = element_text(size=12),
-        panel.spacing = unit(1.5, "lines"),
-        axis.text.y = element_text(size=12),
-        axis.title.y = element_text(size=14))
-
-# ggsave("graphics/tower_canopy_height.png", width=9.5, height=4)
-
+# Main figures ----
+fig1_sensor_heights <- function(sensor_heights, site_meta, tower_color="grey50") {
+  # Filter sensor heights to radiometers and within-canopy microclimate
+  sensor_regex <- paste0(c("T_CANOPY_\\d_\\d_\\d", "H2O_\\d_\\d_\\d",
+                           "TA_\\d_\\d_\\d", "WS_\\d_\\d_\\d"),
+                         collapse="|")
   
+  sensor_heights_filter <- sensor_heights %>%
+    filter(str_detect(Variable, sensor_regex)) %>%
+    select(Site_ID, Variable, Height) %>%
+    mutate(site_neon = site_meta$site_neon[match(Site_ID, site_meta$site_ameriflux)],
+           Height = floor(Height/2)*2,
+           vartype = ifelse(str_detect(Variable, "T_CANOPY"), "Radiometer", "Microclimate\nTriplet")) %>%
+    select(-Variable) %>%
+    distinct() %>%
+    # Drop radiometers below the canopy
+    filter(vartype != "Radiometer" | Height > 2)
+  
+  # Attach filepath of the tree svgs to metadata table
+  site_meta_filepath <- site_meta %>%
+      mutate(filepath = file.path(
+      "graphics", "tree_svgs", str_c(str_to_lower(site_ameriflux), ".png")
+    ))
+  
+  # Make a named vector to match pngs with site
+  file_match_vector <- site_meta_filepath$filepath
+  names(file_match_vector) <- site_meta_filepath$site_ameriflux
+  
+  ggplot(site_meta_filepath, aes(x=site_ameriflux, y=tower_height)) +
+    # Add the tower top first, this can make it easier to not clip
+    # the tower top if the image is resized.
+    geom_bar_pattern(
+      aes(x="right", y=tower_height),
+      fill="black",
+      width=0.3,
+      stat="identity",
+      pattern="image",
+      pattern_type = "none",
+      pattern_filename="graphics/tower_top.png",
+      pattern_scale=-1,
+      pattern_gravity="north",
+      pattern_yoffset=0.5,
+      alpha=0
+    ) +
+    # Tower tile
+    geom_bar_pattern(
+      aes(x="right", y=tower_height*0.8),
+      stat="identity",
+      fill="black",
+      pattern="image",
+      pattern_type="tile",
+      pattern_filename="graphics/tower_tile.png",
+      pattern_filter="box",
+      pattern_scale=-1,
+      color=tower_color,
+      linewidth=1,
+      width=0.2,
+      alpha=0
+    ) +
+    # Now add the trees
+    geom_bar_pattern(
+      aes(pattern_filename=site_ameriflux, y=canopy_height, x="left"),
+      stat="identity",
+      pattern="image",
+      pattern_gravity="south",
+      alpha=0
+    ) +
+    scale_pattern_filename_manual(values=file_match_vector) +
+    # Debug geom to make sure trees match the actual height
+    # geom_point(aes(y=canopy_height, x="left"), color="green") +
+    geom_point(
+      data=sensor_heights_filter,
+      mapping=aes(x="right", y=Height, fill=vartype, shape=vartype),
+      position=position_dodge(width=0.5),
+      col="black",
+      size=2.5
+    ) +
+    scale_shape_manual(values=c(21, 25)) +
+    geom_label(aes(label=site_neon), x=-Inf, y=Inf, vjust=1, hjust=0) +
+    facet_wrap(~ site_neon, scales="free_y") +
+    # suppress image legend
+    guides(pattern_filename="none") +
+    # Styling
+    labs(x="", y="Height above ground (m)", fill="", shape="") +
+    theme_bw() +
+    theme(panel.grid.major.x = element_blank(),
+          axis.text.x = element_blank(),
+          axis.ticks.x = element_blank(),
+          strip.text.x = element_blank(),
+          legend.text = element_text(size=12),
+          panel.spacing = unit(1.5, "lines"),
+          axis.text.y = element_text(size=12),
+          axis.title.y = element_text(size=14))
+}
+fig2_model_one_to_one <- function(eb_rad_tcan_summary) {
+  ggplot(eb_rad_tcan_summary, aes(x=TCAN, y=EB_MODEL_Tl)) +
+    geom_bin2d() +
+    geom_abline(slope=1, intercept=0, color="black", linetype="dashed") +
+    scale_fill_viridis_c(limits=c(0, 200), oob=scales::squish) +
+    facet_wrap(~ SITE_NEON) +
+    theme_bw() +
+    coord_equal() +
+    labs(x=expression("Radiometer temperature ("*degree*"C)"),
+         y=expression("Model temperature ("*degree*"C)"),
+         fill="Count")
+}
+fig3_regression_slopes <- function(eb_regressions) {
+  eb_regressions %>%
+    mutate(LAYER_L = factor(LAYER_L)) %>%
+    ggplot(aes(x=slope_p50, y=LAYER_L)) +
+    geom_vline(xintercept=1, color="grey50", linetype="dashed") +
+    geom_errorbar(aes(xmin=slope_p025, xmax=slope_p975)) +
+    geom_point(aes(fill=prop_Tl_lt_Ta), color="black", size=4, pch=21) +
+    geom_label(aes(label=SITE_NEON), x=-Inf, y=Inf,
+               hjust="left", vjust="top", size=5) +
+    scale_fill_viridis_c() +
+    scale_y_discrete(limits=rev) +
+    scale_x_continuous(limits=c(0.97, 1.15)) +
+    facet_grid(SITE_NEON ~ .,
+               scales="free_y", space="free") +
+    theme_bw() +
+    theme(strip.placement="outside",
+          strip.background = element_blank(),
+          strip.text.y = element_blank(),
+          panel.spacing = unit(1.5, "lines"),
+          axis.title = element_text(size=18),
+          legend.title = element_text(size=14),
+          legend.text = element_text(size=14)
+    ) +
+    guides(fill = guide_colorbar(
+      ticks.colour="black",
+      frame.colour="black"
+    )) +
+    labs(x=expression("T"[leaf]~"vs"~"T"[air]~"regression slope ("~degree*C*"/"*degree*C*")"),
+         y=expression("Cumulative LAI (m"^2~"m"^-2*")"),
+         fill=expression("Proportion T"[leaf]~"<"~"T"[air]))
+}
+fig4_temp_forcing <- function(eb_result) {
+  Rn_site_order <- eb_result %>%
+    group_by(SITE_NEON) %>%
+    summarize(mean_dT_Rn = mean(EB_MODEL_dT_Rn)) %>%
+    arrange(desc(mean_dT_Rn)) %>%
+    pull(SITE_NEON)
+  
+  eb_result %>%
+    select(SITE_NEON, EB_MODEL_dT_LE, EB_MODEL_dT_Rn) %>%
+    pivot_longer(-SITE_NEON) %>%
+    ggplot(aes(x=factor(SITE_NEON, levels=Rn_site_order), y=value, fill=name)) +
+    stat_summary(geom="bar", fun=mean, position="dodge") +
+    stat_summary(geom="errorbar", fun.data=function(x) mean_se(x, 2), position=position_dodge(width=0.9), width=0.3) +
+    scale_fill_manual(
+      labels=c("Cooling from\ntranspiration", "Warming from\nnet radiation"),
+      values=hcl(h=c(195, 15), l=65, c=100)
+    ) +
+    theme_bw() +
+    theme(panel.grid.major.x = element_blank()) +
+    labs(x="", y="Temperature forcing (K)", fill="")
+}
+fig5_gs_gbh_sensitivity <- function(eb_result, grid_eb, 
+                                    gs_min = 0.01, gs_max = 0.5, 
+                                    gbH_min = 0.75, gbH_max = 5) {
+  ggplot(NULL) +
+    geom_point(data=eb_result, mapping=aes(x=PS_LAYER_GS, y=EB_MODEL_gbH),
+               alpha=0.1) +
+    geom_contour(data=grid_eb, 
+                 mapping=aes(x=gs, y=gbH, z=dT),
+                 lwd=1.7, color="black") +
+    geom_contour(data=grid_eb, 
+                 mapping=aes(x=gs, y=gbH, z=dT, color=after_stat(level)),
+                 lwd=1.5) +
+    scale_color_divergent() +
+    geom_label_contour(data=grid_eb, mapping=aes(x=gs, y=gbH, z=dT),
+                       skip=0, label.placer=label_placer_fraction()) +
+    xlim(c(gs_min, gs_max)) + ylim(gbH_min, gbH_max) +
+    theme_bw() +
+    labs(x=expression("Stomatal conductance"~"(mol m"^-2~"s"^-1*")"),
+         y=expression("Boundary layer heat conductance"~"(mol m"^-2~"s"^-1*")"),
+         color=expression(Delta*"T (K)"))
+}
+fig6_shade_gpp <- function(shade_gpp) {
+  # Shaded GPP calculation
+  shade_gpp_sorted <- shade_gpp %>% arrange(desc(prop_gpp_shade)) %>% 
+    pull(SITE_NEON)
+  
+  shade_gpp %>%
+    ggplot(aes(y=SITE_NEON, x=prop_gpp_shade)) +
+    geom_point() +
+    geom_vline(xintercept=0.552, color="red", linetype="dashed") +
+    scale_y_discrete(limits=shade_gpp_sorted) +
+    theme_bw() +
+    labs(x="Proportion shaded GPP", y="") +
+    theme(panel.grid.minor.x = element_blank(),
+          panel.grid.major.x = element_blank()) +
+    xlim(0, 0.7)
+}
+
+
+# Supplemental figures ----
+fig_s1_lidar_fit <- function(lidar_constants_df, iv_io_data, 
+                             max_lai=7) {
+  clai <- seq(0, max_lai, length.out=20)
+  iv_io_extrapolate <- expand.grid(clai, 1:nrow(lidar_constants_df)) %>%
+    cbind(lidar_constants_df[.$Var2, ]) %>%
+    select(-Var2) %>% rename(clai = Var1) %>%
+    mutate(Beam = exp(kb_real * clai),
+           Diffuse = exp(kd_real * clai)) %>%
+    pivot_longer(c(Beam, Diffuse))
+  
+  ggplot(iv_io_data, aes(x=cum_lai, y=iv_io_mean)) +
+    geom_point(aes(color=proportion_diffuse_bin)) +
+    geom_line(data=iv_io_extrapolate, 
+              mapping=aes(x=clai, y=value, group=name, linetype=name)) +
+    facet_wrap(~ site, scales="free") +
+    labs(x="Cumulative LAI", y="Proportion available light",
+         color="Proportion diffuse light", linetype="") +
+    scale_y_log10() + theme_bw()
+}
+fig_s2_medlyn_fit <- function(medlyn_data, medlyn_constants, 
+                              gs_cutoff=1.5, line_color="grey50") {
+  # Some of the P-M Gs values are unreasonable. This are included in fitting
+  # but should be excluded from the figure for clarity.
+  medlyn_data %>%
+    ggplot(aes(x=Gs_mol, y=Gs_mol_predicted)) +
+    geom_point(aes(color=VPD)) +
+    geom_label(
+      data=medlyn_constants,
+      mapping=aes(x=0, y=gs_cutoff, label=str_c("g1 = ", format(round(g1, 2), nsmall=2))),
+      vjust=1,
+      hjust=0
+    ) +
+    geom_abline(slope=1, intercept=0, color=line_color) +
+    coord_equal(xlim=c(0, gs_cutoff), ylim=c(0, gs_cutoff)) +
+    scale_color_viridis_c() +
+    facet_wrap(~ site_neon) +
+    theme_bw() +
+    labs(x=expression("Penman-Monteith G"[s]~"(mol m"^-2~"s"^-1*")"),
+         y=expression("Model G"[s]~"(mol m"^-2~"s"^-1*")"),
+         color="VPD (kPa)")
+}
+fig_s3_aq_fit <- function(aq_constants, aq_data) {
+  # Show fit on top of raw data
+  sw_range <- seq(0, 1250)
+  fit_pred <- aq_constants %>%
+    mutate(
+      A_pred = pmap(
+        list(k_sat, phi_J, theta_J, Rd),
+        function(k_sat, phi_J, theta_J, Rd) {
+          data.frame(
+            A = marshall_biscoe_1980(sw_range, k_sat, phi_J, theta_J) - Rd,
+            Q = sw_range
+          )
+        }
+      )
+    ) %>%
+    select(site, A_pred) %>% unnest(A_pred)
+  
+  ggplot(NULL) +
+    geom_point(mapping=aes(x=.Qabs, y=.A), data=aq_data, alpha=0.1) +
+    geom_line(mapping=aes(x=Q, y=A, color="Fit"), data=fit_pred, lwd=1, show.legend = FALSE) +
+    facet_wrap(~ site, scales="free_y") +
+    labs(x=expression("Top-of-canopy shortwave (W m"^2*")"),
+         y=expression("Canopy GPP ("*mu*"mol CO"[2]~"m"^-2~s^-1*")"),
+         color="") +
+    theme_bw()
+}
+fig_s4_rad_model_pairings <- function(model_radiometer_crosswalk) {
+  # This approach actually duplicates some points on the radiometer side. But
+  # you can't see this in the final product so whatever.
+  ggplot(model_radiometer_crosswalk) +
+    geom_segment(aes(x="Model Layers", xend="Radiometers", y=LAYER_z, yend=Height),
+                 linetype="dashed") +
+    geom_point(aes(x="Model Layers", y=LAYER_z), fill="orange", pch=22, size=2) +
+    # Match color and pch in fig 1
+    geom_point(aes(x="Radiometers", y=Height), fill="#00BFC4", pch=25, size=2) +
+    facet_wrap(~ SITE_NEON, scales="free_y") +
+    theme_bw() +
+    labs(x="", y="Height above ground (m)")
+}
+fig_s5_g1_sensitivity <- function(wref_g1_regressions) {
+  ggplot(wref_g1_regressions, aes(y=factor(LAYER_L))) +
+    geom_vline(xintercept=1, color="grey50", linetype="dashed") +
+    geom_errorbar(aes(xmin=slope_p025, xmax=slope_p975)) +
+    geom_point(aes(x=slope_p50, fill=prop_Tl_lt_Ta), size=2, pch=21) +
+    facet_wrap(~ str_c("g1 = ", MEDLYN_g1)) +
+    scale_fill_viridis_c() +
+    scale_y_discrete(limits=rev) +
+    scale_x_continuous(limits=c(0.97, NA)) +
+    theme_bw() +
+    labs(x=expression("T"[leaf]~"vs"~"T"[air]~"regression slope ("~degree*C*"/"*degree*C*")"),
+         y=expression("Cumulative LAI (m"^2~"m"^-2*")"),
+         fill=expression("Proportion T"[leaf]~"<"~"T"[air])) +
+    guides(fill = guide_colorbar(
+      ticks.colour="black",
+      frame.colour="black"
+    ))
+}
+
+# Spit out all figures ----
+# Helper function to prevent overwrites
+safe_save <- function(filename, plot, allow_overwrite=FALSE, ...) {
+  if (allow_overwrite | !file.exists(filename)) {
+    ggsave(filename, plot, ...)
+  } else {
+    warning(filename, " already exists! Figure not written.")
+  }
+}
+
+write_all_figures <- function(outdir, overwrite=FALSE) {
+  # Read data ----
+  use_sites <- c("ABBY", "DEJU", "JERC", "OSBS", "RMNP", "TALL", "WREF")
+  
+  # General site metadata
+  site_meta <- read_csv("data_working/neon_site_metadata.csv") %>%
+    filter(site_neon %in% use_sites)
+  
+  # Height of ameriflux sensors
+  sensor_heights <- amerifluxr::amf_var_info() %>%
+    filter(Site_ID %in% site_meta$site_ameriflux) %>%
+    mutate(SITE_NEON = site_meta$site_neon[match(Site_ID, site_meta$site_ameriflux)])
+  
+  # Lidar constants and mean transmission data
+  lidar_constants_df <- read_csv("data_out/neon_lidar_constants.csv") %>%
+    filter(site %in% use_sites)
+  
+  iv_io_data <- read_csv("data_out/neon_lidar_transmission_data.csv") %>%
+    filter(site %in% use_sites)
+  
+  # Medlyn model coefficients and fit
+  medlyn_data <- read_csv("data_out/cross_site_medlyn_fit_results.csv") %>%
+    mutate(site_neon = site_meta$site_neon[match(site, site_meta$site_ameriflux)])
+  
+  medlyn_constants <- read_csv("data_out/cross_site_medlyn_coefficients.csv") %>%
+    mutate(site_neon = site_meta$site_neon[match(site, site_meta$site_ameriflux)]) %>%
+    drop_na()
+  
+  # AQ curve coefficients and fit
+  aq_constants <- read_csv("data_out/cross_site_aq_constants.csv") %>%
+    filter(site %in% use_sites)
+  
+  aq_data <- read_csv("data_out/cross_site_aq_data.csv") %>%
+    filter(site %in% use_sites)
+  
+  # Model layer and radiometer pairings
+  model_radiometer_crosswalk <- read_csv("data_out/model_rad_height_crosswalk.csv") %>%
+    # Attach NEON site code for consistency
+    mutate(SITE_NEON = site_meta$site_neon[match(SITE_AMF, site_meta$site_ameriflux)])
+  
+  # EB model result and lmodel2 regressions
+  eb_result <- read_csv("data_out/model_runs/cross_site_eb.csv")
+  eb_regressions <- eb_result %>%
+    mutate(EB_MODEL_dT = EB_MODEL_Tl - 273.15 - LAYER_TA) %>%
+    select(SITE_NEON, LAYER_L, LAYER_TA, contains("EB_MODEL")) %>%
+    group_by(SITE_NEON, LAYER_L) %>%
+    nest(data=-c(SITE_NEON, LAYER_L)) %>%
+    mutate(
+      # Run model II regressions to get Tl/Ta slope
+      slope_lm = map(
+        data,
+        function(data) {
+          lmodel2(EB_MODEL_Tl ~ LAYER_TA, data=data)
+        }
+      ),
+      slope_p025 = map_dbl(slope_lm, function(m) m$confidence.intervals[3, 4]),
+      slope_p50  = map_dbl(slope_lm, function(m) m$regression.results[3, 3]),
+      slope_p975 = map_dbl(slope_lm, function(m) m$confidence.intervals[3, 5]),
+      prop_Tl_lt_Ta = map_dbl(data, function(d) {
+        sum((d$EB_MODEL_Tl - 273.15) < d$LAYER_TA) / nrow(d) }
+      ))
+  
+  # Layer-by-layer model and radiometer comparison
+  eb_rad_tcan_summary <- read_csv("data_out/cross_site_model_rad_comparison.csv")
+  eb_rad_height_xwalk <- read_csv("data_out/model_rad_height_crosswalk.csv")
+  
+  # gs/gbh sensitivity analysis
+  grid_eb <- read_csv("data_out/model_runs/gs_gbh_sensitivity.csv")
+  
+  # Shaded GPP calculation
+  shade_gpp <- read_csv("data_out/model_runs/cross_site_shade_gpp.csv")
+  
+  # g1 sensitivity analysis
+  wref_g1_sensitivity <- read_csv("data_out/model_runs/wref_eb_g1_sensitivity.csv")
+  wref_g1_regressions <- wref_g1_sensitivity %>%
+    select(SITE_NEON, MEDLYN_g1, LAYER_L, LAYER_TA, EB_MODEL_Tl) %>%
+    group_by(MEDLYN_g1, LAYER_L) %>%
+    nest(data=c(LAYER_TA, EB_MODEL_Tl)) %>%
+    mutate(
+      # Run model II regressions to get Tl/Ta slope
+      slope_lm = map(
+        data,
+        function(data) {
+          lmodel2(EB_MODEL_Tl ~ LAYER_TA, data=data)
+        }
+      ),
+      slope_p025 = map_dbl(slope_lm, function(m) m$confidence.intervals[3, 4]),
+      slope_p50  = map_dbl(slope_lm, function(m) m$regression.results[3, 3]),
+      slope_p975 = map_dbl(slope_lm, function(m) m$confidence.intervals[3, 5]),
+      prop_Tl_lt_Ta = map_dbl(data, function(d) {
+        sum((d$EB_MODEL_Tl - 273.15) < d$LAYER_TA) / nrow(d) }
+      ))
+  
+  
+  ## Generate all the figs ----
+  ### Main text ----
+  safe_save(file.path(outdir, "fig1_sensor_heights.png"),
+            fig1_sensor_heights(sensor_heights, site_meta),
+            allow_overwrite=overwrite,
+            width=6.5, height=4)
+  
+  safe_save(file.path(outdir, "fig2_model_one_to_one.png"),
+            fig2_model_one_to_one(eb_rad_tcan_summary),
+            allow_overwrite=overwrite,
+            width=5, height=4.5)
+  
+  safe_save(file.path(outdir, "fig3_regression_slopes.png"),
+            fig3_regression_slopes(eb_regressions),
+            allow_overwrite=overwrite,
+            width=5, height=10)
+  
+  safe_save(file.path(outdir, "fig4_temp_forcing.png"),
+            fig4_temp_forcing(eb_result),
+            allow_overwrite=overwrite,
+            width=8, height=3.5)
+  
+  safe_save(file.path(outdir, "fig5_gs_gbh_sensitivity.png"),
+            fig5_gs_gbh_sensitivity(eb_result, grid_eb),
+            allow_overwrite=overwrite,
+            width=8, height=6)
+  
+  safe_save(file.path(outdir, "fig6_shade_gpp.png"),
+            fig6_shade_gpp(shade_gpp),
+            allow_overwrite=overwrite,
+            width=4, height=2)
+  
+  ### Supplemental ----
+  safe_save(file.path(outdir, "fig_s1_lidar_fit.png"),
+            fig_s1_lidar_fit(lidar_constants_df, iv_io_data),
+            allow_overwrite=overwrite,
+            width=8, height=6)
+  
+  safe_save(file.path(outdir, "fig_s2_medlyn_fit.png"),
+            fig_s2_medlyn_fit(medlyn_data, medlyn_constants),
+            allow_overwrite=overwrite,
+            width=6, height=6)
+  
+  safe_save(file.path(outdir, "fig_s3_aq_fit.png"),
+            fig_s3_aq_fit(aq_constants, aq_data),
+            allow_overwrite=overwrite,
+            width=8, height=6)
+  
+  safe_save(file.path(outdir, "fig_s4_rad_model_pairings.png"),
+            fig_s4_rad_model_pairings(model_radiometer_crosswalk),
+            allow_overwrite=overwrite,
+            width=8, height=6)
+  
+  safe_save(file.path(outdir, "fig_s5_g1_sensitivity.png"),
+            fig_s5_g1_sensitivity(wref_g1_regressions),
+            allow_overwrite=overwrite,
+            width=8, height=6)
+}
