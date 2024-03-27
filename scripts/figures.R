@@ -358,25 +358,7 @@ write_all_figures <- function(outdir, overwrite=FALSE) {
   
   # EB model result and lmodel2 regressions
   eb_result <- read_csv("data_out/model_runs/cross_site_eb.csv")
-  eb_regressions <- eb_result %>%
-    mutate(EB_MODEL_dT = EB_MODEL_Tl - 273.15 - LAYER_TA) %>%
-    select(SITE_NEON, LAYER_L, LAYER_TA, contains("EB_MODEL")) %>%
-    group_by(SITE_NEON, LAYER_L) %>%
-    nest(data=-c(SITE_NEON, LAYER_L)) %>%
-    mutate(
-      # Run model II regressions to get Tl/Ta slope
-      slope_lm = map(
-        data,
-        function(data) {
-          lmodel2(EB_MODEL_Tl ~ LAYER_TA, data=data)
-        }
-      ),
-      slope_p025 = map_dbl(slope_lm, function(m) m$confidence.intervals[3, 4]),
-      slope_p50  = map_dbl(slope_lm, function(m) m$regression.results[3, 3]),
-      slope_p975 = map_dbl(slope_lm, function(m) m$confidence.intervals[3, 5]),
-      prop_Tl_lt_Ta = map_dbl(data, function(d) {
-        sum((d$EB_MODEL_Tl - 273.15) < d$LAYER_TA) / nrow(d) }
-      ))
+  eb_regressions <- read_csv("data_out/model_runs/cross_site_tl_ta_slopes.csv")
   
   # Layer-by-layer model and radiometer comparison
   eb_rad_tcan_summary <- read_csv("data_out/cross_site_model_rad_comparison.csv")
@@ -390,25 +372,7 @@ write_all_figures <- function(outdir, overwrite=FALSE) {
   
   # g1 sensitivity analysis
   wref_g1_sensitivity <- read_csv("data_out/model_runs/wref_eb_g1_sensitivity.csv")
-  wref_g1_regressions <- wref_g1_sensitivity %>%
-    select(SITE_NEON, MEDLYN_g1, LAYER_L, LAYER_TA, EB_MODEL_Tl) %>%
-    group_by(MEDLYN_g1, LAYER_L) %>%
-    nest(data=c(LAYER_TA, EB_MODEL_Tl)) %>%
-    mutate(
-      # Run model II regressions to get Tl/Ta slope
-      slope_lm = map(
-        data,
-        function(data) {
-          lmodel2(EB_MODEL_Tl ~ LAYER_TA, data=data)
-        }
-      ),
-      slope_p025 = map_dbl(slope_lm, function(m) m$confidence.intervals[3, 4]),
-      slope_p50  = map_dbl(slope_lm, function(m) m$regression.results[3, 3]),
-      slope_p975 = map_dbl(slope_lm, function(m) m$confidence.intervals[3, 5]),
-      prop_Tl_lt_Ta = map_dbl(data, function(d) {
-        sum((d$EB_MODEL_Tl - 273.15) < d$LAYER_TA) / nrow(d) }
-      ))
-  
+  wref_g1_regressions <- read_csv("data_out/model_runs/wref_g1_tl_ta_slopes.csv")
   
   ## Generate all the figs ----
   ### Main text ----
@@ -425,7 +389,7 @@ write_all_figures <- function(outdir, overwrite=FALSE) {
   safe_save(file.path(outdir, "fig3_regression_slopes.png"),
             fig3_regression_slopes(eb_regressions),
             allow_overwrite=overwrite,
-            width=5, height=10)
+            width=8, height=10)
   
   safe_save(file.path(outdir, "fig4_temp_forcing.png"),
             fig4_temp_forcing(eb_result),

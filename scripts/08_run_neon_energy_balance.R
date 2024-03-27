@@ -332,9 +332,12 @@ flux_eb_slopes <- flux_eb_result %>%
     slope_p50  = map_dbl(slope_lm, function(m) m$regression.results[3, 3]),
     slope_p975 = map_dbl(slope_lm, function(m) m$confidence.intervals[3, 5]),
     int_p50    = map_dbl(slope_lm, function(m) m$regression.results[3, 2] - 273.15),
-    
+    prop_Tl_lt_Ta = map_dbl(data, function(d) {
+      sum((d$EB_MODEL_Tl - 273.15) < d$LAYER_TA) / nrow(d) }
+    )
   ) %>%
-  select(SITE_NEON, LAYER_L, LAI, slope_p50, slope_p025, slope_p975, int_p50)
+  select(SITE_NEON, LAYER_L, LAI, slope_p50, slope_p025, slope_p975, int_p50, 
+         prop_Tl_lt_Ta)
 
 # Tl vs. Ta slopes for different values of g1
 wref_g1_ta_tl_slopes <- flux_eb_result_wref_g1_sensitivity %>%
@@ -351,8 +354,14 @@ wref_g1_ta_tl_slopes <- flux_eb_result_wref_g1_sensitivity %>%
     ),
     slope_p025 = map_dbl(slope_lm, function(m) m$confidence.intervals[3, 4]),
     slope_p50  = map_dbl(slope_lm, function(m) m$regression.results[3, 3]),
-    slope_p975 = map_dbl(slope_lm, function(m) m$confidence.intervals[3, 5])) %>%
-  ungroup()
+    slope_p975 = map_dbl(slope_lm, function(m) m$confidence.intervals[3, 5]),
+    int_p50    = map_dbl(slope_lm, function(m) m$regression.results[3, 2] - 273.15),
+    prop_Tl_lt_Ta = map_dbl(data, function(d) {
+      sum((d$EB_MODEL_Tl - 273.15) < d$LAYER_TA) / nrow(d) }
+    )) %>%
+  ungroup() %>%
+  select(SITE_NEON, LAYER_L, MEDLYN_g1, slope_p50, slope_p025, slope_p975, int_p50,
+         prop_Tl_lt_Ta)
 
 # Shaded GPP calculation
 shade_gpp <- flux_eb_result %>%
