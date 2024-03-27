@@ -5,6 +5,7 @@ library(tidyverse)
 library(colorspace)
 library(metR)
 source("scripts/energy_balance/leaf_eb_numeric.R")
+source("scripts/tower_util.R")
 
 
 # Driver functions ----
@@ -92,6 +93,7 @@ grid_eb <- grid %>%
     dT = Tl - Ta
   )
 
+write_if_not_exist(grid_eb, "data_out/model_runs/gs_gbh_sensitivity.csv")
 
 # Plotting ----
 # example gbH values
