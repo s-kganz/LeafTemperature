@@ -70,6 +70,9 @@ eb_result_rad_tcan_summary <- eb_result_rad_tcan %>%
             LAYER_TA=mean(LAYER_TA, na.rm=TRUE),
             EB_MODEL_Tl=mean(EB_MODEL_Tl, na.rm=TRUE)-273.15)
 
+write_if_not_exist(eb_result_rad_tcan_summary, "data_out/cross_site_model_rad_comparison.csv")
+write_if_not_exist(model_rad_join, "data_out/model_rad_height_crosswalk.csv")
+
 ## Accuracy metrics ----
 # RMSE, Bias, R2
 accuracy_metrics <- eb_result_rad_tcan_summary %>%

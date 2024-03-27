@@ -98,5 +98,6 @@ ggplot(NULL) +
        color="") +
   theme_bw()
 
-# Save model coefficients ----
+# Save model coefficients and fit ----
 write_if_not_exist(fits, "data_out/cross_site_aq_constants.csv")
+write_if_not_exist(flux_tower_join, "data_out/cross_site_aq_data.csv")

@@ -194,6 +194,7 @@ iv_io_extrapolate <- expand.grid(clai, 1:nrow(lidar_constants_df)) %>%
   scale_y_log10() + theme_bw())
 
 write_if_not_exist(lidar_constants_df, "data_out/neon_lidar_constants.csv")
+write_if_not_exist(iv_io_data, "data_out/neon_lidar_transmission_data.csv")
 
 # Plot LAD profiles for each site
 (plot_lad_profiles <- ggplot(lad_data, aes(x=z)) +
