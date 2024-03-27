@@ -82,14 +82,3 @@ accuracy_metrics <- eb_result_rad_tcan_summary %>%
     bias = mean(EB_MODEL_Tl - TCAN),
     r2   = cor(EB_MODEL_Tl, TCAN)^2
   )
-# Plotting ----
-ggplot(eb_result_rad_tcan_summary, aes(x=TCAN, y=EB_MODEL_Tl)) +
-  geom_bin2d() +
-  geom_abline(slope=1, intercept=0, color="black", linetype="dashed") +
-  scale_fill_viridis_c(limits=c(0, 200), oob=scales::squish) +
-  facet_wrap(~ SITE_NEON) +
-  theme_bw() +
-  coord_equal() +
-  labs(x=expression("Radiometer temperature ("*degree*"C)"),
-       y=expression("Model temperature ("*degree*"C)"),
-       fill="Count")

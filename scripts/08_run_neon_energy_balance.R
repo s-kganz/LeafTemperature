@@ -311,38 +311,11 @@ flux_eb_result_wref_g1_sensitivity <- flux_wref_g1_sensitivity %>%
   ) %>%
   unnest_wider(EB_MODEL, names_sep="_") %>%
   mutate(EB_MODEL_dT = EB_MODEL_Tl - 273.15 - LAYER_TA)
-  
-# Save results ----
-write_if_not_exist(flux_eb_result, "data_out/model_runs/cross_site_eb.csv")
-write_if_not_exist(flux_eb_result_bigleaf, "data_out/model_runs/cross_site_eb_bigleaf.csv")
-write_if_not_exist(flux_eb_result_wref_g1_sensitivity, "data_out/model_runs/wref_eb_g1_sensitivity.csv")
 
-# Plots! ----
-# Tl by site
-(plot_tl_hist <- flux_eb_result_bigleaf %>%
-   #filter(LAYER_L/LAI > 0.5) %>%
-   ggplot(aes(x=LAYER_TA, y=EB_MODEL_Tl-273.15-LAYER_TA)) +
-   geom_point(aes(color=LAYER_L/LAI), alpha=0.5) +
-   #geom_abline(slope=1, intercept=0, color="red") +
-   facet_wrap(~ SITE_NEON) +
-   scale_color_viridis_c() +
-   theme_bw()
-)
-
-# Tl vs. Ta for all layers
-(plot_tl_ta <- flux_eb_result %>%
-  mutate(EB_MODEL_dT = EB_MODEL_Tl - 273.15 - LAYER_TA) %>%
-  ggplot(aes(x=LAYER_TA, y=EB_MODEL_Tl-273.15)) +
-  geom_point(alpha=0.5) +
-  geom_hline(yintercept=0) +
-  facet_grid(SITE_NEON ~ LAYER_L) +
-  theme_bw() +
-  labs(x=expression("Air temperature ("~degree~"C)"),
-       y="Leaf-air T difference ("~degree~"K)")
-)
-
-# Four quadrants figure
-flux_eb_models <- flux_eb_result %>%
+# Derived data products ----
+# Model II regressions for the cross-site analysis and the g1 sensitivity
+# analysis.
+flux_eb_slopes <- flux_eb_result %>%
   mutate(EB_MODEL_dT = EB_MODEL_Tl - 273.15 - LAYER_TA) %>%
   select(SITE_NEON, LAI, LAYER_L, LAYER_TA, contains("EB_MODEL")) %>%
   group_by(SITE_NEON, LAYER_L, LAI) %>%
@@ -359,192 +332,9 @@ flux_eb_models <- flux_eb_result %>%
     slope_p50  = map_dbl(slope_lm, function(m) m$regression.results[3, 3]),
     slope_p975 = map_dbl(slope_lm, function(m) m$confidence.intervals[3, 5]),
     int_p50    = map_dbl(slope_lm, function(m) m$regression.results[3, 2] - 273.15),
-    # Variance partitioning
-    var_lm = map(
-      data,
-      function(data) {
-        anova(lm(EB_MODEL_dT ~ EB_MODEL_dT_Rn + EB_MODEL_dT_LE, data=data))
-      }
-    ),
-    tot_var = map_dbl(var_lm, function(m) sum(m$`Sum Sq`)),
-    Rn_var = map_dbl(var_lm, function(m) m$`Sum Sq`[1]),
-    LE_var = map_dbl(var_lm, function(m) sum(m$`Sum Sq`[2])),
-    prop_var_Rn = Rn_var / tot_var,
-    prop_var_LE = LE_var / tot_var
+    
   ) %>%
-  select(SITE_NEON, LAYER_L, LAI, prop_var_Rn, slope_p50, slope_p025, slope_p975, int_p50) %>%
-  arrange(SITE_NEON, LAYER_L) %>%
-  group_by(SITE_NEON) %>%
-  mutate(
-    xend = lead(prop_var_Rn),
-    yend = lead(slope_p50)
-  ) 
-
-(plot_slope_rn <- flux_eb_models %>%
-  ggplot(aes(x=prop_var_Rn, y=slope_p50)) +
-  #geom_segment(aes(group=SITE_NEON, xend=xend, yend=yend)) +
-  geom_errorbar(aes(ymin=slope_p025, ymax=slope_p975),
-               width=0.001) +
-  geom_point(aes(color=LAYER_L/LAI), size=4) +
-  scale_color_viridis_c() +
-  facet_wrap(~ SITE_NEON, scales="free") +
-  labs(y=expression(T[leaf]~"vs."~T[air]~"slope (model II regression)"),
-       x=expression("Proportion of variance explained by"~R[n]),
-       color="Proportion of total LAI") +
-  theme_bw())
-
-site_set_1 <- c("DEJU", "ABBY", "RMNP", "WREF")
-
-(plot_regression_result <- flux_eb_models %>%
-    filter(!(SITE_NEON %in% site_set_1)) %>%
-    mutate(LAYER_L = factor(LAYER_L)) %>%
-    ggplot(aes(x=slope_p50, y=LAYER_L)) +
-    geom_vline(xintercept=1, color="grey50", linetype="dashed") +
-    geom_errorbar(aes(xmin=slope_p025, xmax=slope_p975)) +
-    geom_point(aes(fill=int_p50), color="black", size=4, pch=21) +
-    geom_label(aes(label=SITE_NEON), x=-Inf, y=Inf,
-               hjust="left", vjust="top", size=5) +
-    scale_fill_distiller(
-      type="div", palette="Spectral",
-      limits=c(-1.5, 1.5)
-    ) +
-    scale_y_discrete(limits=rev) +
-    scale_x_continuous(limits=c(0.97, 1.15)) +
-    facet_grid(SITE_NEON ~ .,
-               scales="free_y", space="free") +
-    theme_bw() +
-    theme(strip.placement="outside",
-          strip.background = element_blank(),
-          strip.text.y = element_blank(),
-          panel.spacing = unit(1.5, "lines"),
-          axis.title = element_text(size=18),
-          legend.title = element_text(size=14),
-          legend.text = element_text(size=14)
-          ) +
-    guides(fill = guide_colorbar(
-      ticks.colour="black",
-      frame.colour="black"
-    )) +
-    labs(x=expression("T"[leaf]~"vs"~"T"[air]~"regression slope ("~degree*C*"/"*degree*C*")"),
-         y=expression("Cumulative LAI (m"^2~"m"^-2*")"),
-         fill=expression("Model II\nregression intercept"~"("*degree*C*")"))
-)
-
-# How well does layer-by-layer LE match canopy LE?
-(plot_le_one_to_one <- flux_eb_result %>%
-  select(SITE_NEON, TIMESTAMP, TOC_LE, EB_MODEL_LE) %>%
-  filter(TOC_LE > 0) %>%
-  group_by(SITE_NEON, TIMESTAMP) %>%
-  summarize(TOC_LE=first(TOC_LE),
-            EB_MODEL_LE_SUM = sum(EB_MODEL_LE)) %>%
-  ggplot(aes(x=TOC_LE, y=EB_MODEL_LE_SUM)) +
-  ggpointdensity::geom_pointdensity() +
-  geom_abline(slope=1, intercept=0, color="red", linetype="dashed") +
-  coord_equal() +
-  scale_color_viridis_c() +
-  facet_wrap(~ SITE_NEON) +
-  theme_bw() +
-  labs(x=expression("Tower-based "~lambda~"E"~bgroup("(",frac(W, m^2),")")),
-       y=expression("Model-based "~lambda~"E"~bgroup("(",frac(W, m^2),")")),
-       color="Point density")
-)
-
-# Layer-by-layer plot of the two fluxes
-(plot_rad_fluxes <- flux_eb_result %>%
-  filter(!is.na(MEDLYN_g1), SITE_NEON == "WREF") %>%
-  select(SITE_NEON, LAYER_L, RAD_LW_ABS, RAD_SW_ABS) %>%
-  mutate(LAYER_L = factor(LAYER_L)) %>%
-  pivot_longer(c(RAD_SW_ABS, RAD_LW_ABS)) %>%
-  ggplot(aes(x=factor(LAYER_L), y=value)) +
-  geom_boxplot(aes(fill=name)) +
-  facet_wrap(~ SITE_NEON, scales="free_y") +
-  coord_flip() +
-  scale_x_discrete(limits=rev) +
-  scale_fill_hue(labels=c("Longwave radiation", "Shortwave radiation")) +
-  theme_bw() +
-  labs(y=expression("Absorbed radiation (W m"^-2*")"),
-       x=expression("Cumulative LAI (m"^2~"m"^-2*")"),
-       fill="")) +
-  theme(legend.text=element_text(size=18),
-        axis.title=element_text(size=18))
-
-# Layer by layer plot of GPP
-(plot_layer_gpp <- flux_ps_model %>%
-  filter(!is.na(MEDLYN_g1), SITE_NEON=="WREF") %>%
-  select(SITE_NEON, LAYER_L, PS_LAYER_GPP) %>%
-  mutate(LAYER_L = factor(LAYER_L)) %>%
-  ggplot(aes(x=factor(LAYER_L), y=PS_LAYER_GPP)) +
-  geom_boxplot(fill="lightgreen") +
-  facet_wrap(~ SITE_NEON, scales="free") +
-  coord_flip() +
-  scale_x_discrete(limits=rev)  +
-  theme_bw() +
-  labs(y=expression("Layer GPP ("*mu*mol~CO[2]~m^-2~s^-1*")"),
-       x=expression("Cumulative LAI (m"^2~"m"^-2*")"),
-       fill="") +
-  theme(axis.title = element_text(size=18)))
-
-(plot_layer_gs <- flux_ps_model %>%
-    filter(!is.na(PS_LAYER_GS)) %>%
-    select(SITE_NEON, LAYER_L, PS_LAYER_GS) %>%
-    mutate(LAYER_L = factor(LAYER_L)) %>%
-    ggplot(aes(x=factor(LAYER_L), y=PS_LAYER_GS)) +
-    geom_boxplot(fill="lightgreen") +
-    facet_wrap(~ SITE_NEON, scales="free") +
-    coord_flip() +
-    scale_x_discrete(limits=rev)  +
-    theme_bw() +
-    labs(y=expression("Layer"~g[s]~bgroup("(", frac(mol, m^2~s), ")")),
-         x=expression("Cumulative LAI"~bgroup("(", frac(m^2, m^2), ")")),
-         fill=""))
-
-# Changes in Tl/Ta slope by varying g1 in WREF
-(plot_wref_g1_tl_ta <- flux_eb_result_wref_g1_sensitivity %>%
-    mutate(EB_MODEL_dT = EB_MODEL_Tl - 273.15 - LAYER_TA) %>%
-    ggplot(aes(x=LAYER_TA, y=EB_MODEL_dT)) +
-    geom_point(alpha=0.5) +
-    geom_hline(yintercept=0) +
-    facet_grid(MEDLYN_g1 ~ LAYER_L) +
-    theme_bw() +
-    labs(x=expression("Air temperature ("~degree~"C)"),
-         y="Leaf-air T difference ("~degree~"K)")
-)
-
-# TOC gs by varying g1 in WREF
-wref_g1 <- flux_eb_result %>% filter(SITE_NEON == "WREF") %>%
-  pull(MEDLYN_g1) %>% head(1)
-  
-(plot_wref_g1_gs <- flux_eb_result_wref_g1_sensitivity %>%
-    filter(LAYER_L == 0, PS_LAYER_GS < 0.5) %>%
-    ggplot(aes(x=PS_LAYER_GS, y=MEDLYN_g1)) +
-    geom_density_ridges(aes(group=MEDLYN_g1)) +
-    geom_hline(yintercept=wref_g1, color="red", linetype="dashed") +
-    scale_y_continuous(breaks=seq(1:9)) +
-    theme_bw() +
-    labs(x=expression("Layer"~g[s]~bgroup("(", frac(mol, m^2~s), ")")),
-         y=expression("Medlyn"~g[1]~"parameter"))
-)
-
-# But, is total LE reasonable at high values of g1?
-(plot_wref_g1_le_one_to_one <- flux_eb_result_wref_g1_sensitivity %>%
-    select(SITE_NEON, TIMESTAMP, TOC_LE, EB_MODEL_LE, MEDLYN_g1) %>%
-    filter(TOC_LE > 0) %>%
-    mutate(MEDLYN_g1 = str_c("g1 = ", MEDLYN_g1)) %>%
-    group_by(SITE_NEON, TIMESTAMP, MEDLYN_g1) %>%
-    summarize(TOC_LE=first(TOC_LE),
-              EB_MODEL_LE_SUM = sum(EB_MODEL_LE)) %>%
-    ggplot(aes(x=TOC_LE, y=EB_MODEL_LE_SUM)) +
-    ggpointdensity::geom_pointdensity() +
-    geom_abline(slope=1, intercept=0, color="red", linetype="dashed") +
-    coord_equal() +
-    scale_color_viridis_c() +
-    scale_x_continuous(breaks=seq(0, 450, by=150)) +
-    facet_wrap(~ MEDLYN_g1) +
-    theme_bw() +
-    labs(x=expression("Tower-based "~lambda~"E"~bgroup("(",frac(W, m^2),")")),
-         y=expression("Model-based "~lambda~"E"~bgroup("(",frac(W, m^2),")")),
-         color="Point density")
-)
+  select(SITE_NEON, LAYER_L, LAI, slope_p50, slope_p025, slope_p975, int_p50)
 
 # Tl vs. Ta slopes for different values of g1
 wref_g1_ta_tl_slopes <- flux_eb_result_wref_g1_sensitivity %>%
@@ -564,43 +354,6 @@ wref_g1_ta_tl_slopes <- flux_eb_result_wref_g1_sensitivity %>%
     slope_p975 = map_dbl(slope_lm, function(m) m$confidence.intervals[3, 5])) %>%
   ungroup()
 
-
-# Compare relative flux magnitudes
-flux_eb_result %>%
-  filter(SITE_NEON == "WREF") %>%
-  select(SITE_NEON, LAYER_L, EB_MODEL_Rn, EB_MODEL_H, EB_MODEL_LE) %>%
-  pivot_longer(contains("EB_MODEL")) %>%
-  ggplot(aes(x=value)) +
-  geom_boxplot(aes(fill=name), position=position_dodge()) +
-  facet_wrap(~ factor(LAYER_L), ncol=1, strip.position="left") +
-  theme_bw() +
-  theme(axis.text.y = element_blank(),
-        axis.ticks.y = element_blank(),
-        strip.text.y.left = element_text(angle=0),
-        strip.background = element_blank()) +
-  labs(x=expression("Heat flux"~"["~W/m^2~"]"),
-       y="Cumulative LAI",
-       fill="Flux source")
-  
-# TL vs. TA for just WREF
-flux_eb_result %>%
-  filter(SITE_NEON == "WREF") %>%
-  mutate(canopy_pos = case_when(
-    LAYER_L %in% 0:2 ~ "Upper canopy",
-    LAYER_L %in% 3:6 ~ "Middle canopy",
-    LAYER_L %in% 7:9 ~ "Lower canopy"
-  )) %>%
-  ggplot(aes(x=LAYER_TA, y=EB_MODEL_Tl-273.15)) +
-  geom_abline(slope=1, intercept=0, color="red") +
-  geom_point(alpha=0.5) +
-  coord_equal() +
-  facet_wrap(~ canopy_pos) +
-  theme_bw() +
-  theme(axis.title=element_text(size=18),
-        strip.text=element_text(size=18)) +
-  labs(x=expression("Air temperature ("*degree*"C)"),
-       y=expression("Leaf temperature ("*degree*"C)"))
-
 # Shaded GPP calculation
 shade_gpp <- flux_eb_result %>%
   mutate(pct_sunlit = exp(LIDAR_kd_black * LAYER_L),
@@ -613,42 +366,11 @@ shade_gpp <- flux_eb_result %>%
             prop_gpp_sunlit = tot_gpp_sunlit / tot_gpp,
             prop_gpp_shade = tot_gpp_shade / tot_gpp)
 
+# Save results ----
+write_if_not_exist(flux_eb_result, "data_out/model_runs/cross_site_eb.csv")
+write_if_not_exist(flux_eb_result_bigleaf, "data_out/model_runs/cross_site_eb_bigleaf.csv")
+write_if_not_exist(flux_eb_result_wref_g1_sensitivity, "data_out/model_runs/wref_eb_g1_sensitivity.csv")
+write_if_not_exist(flux_eb_slopes, "data_out/model_runs/cross_site_tl_ta_slopes.csv")
+write_if_not_exist(wref_g1_ta_tl_slopes, "data_out/model_runs/wref_g1_tl_ta_slopes.csv")
 write_if_not_exist(shade_gpp, "data_out/model_runs/cross_site_shade_gpp.csv")
-
-shade_gpp_sorted <- shade_gpp %>% arrange(desc(prop_gpp_shade)) %>% 
-  pull(SITE_NEON)
-
-shade_gpp %>%
-  ggplot(aes(y=SITE_NEON, x=prop_gpp_shade)) +
-  geom_point() +
-  geom_vline(xintercept=0.552, color="red", linetype="dashed") +
-  scale_y_discrete(limits=shade_gpp_sorted) +
-  theme_bw() +
-  labs(x="Proportion shaded GPP", y="") +
-  theme(panel.grid.minor.x = element_blank(),
-        panel.grid.major.x = element_blank()) +
-  xlim(0, 0.7)
-
-
-# Temperature forcing
-# Precompute order of sites so that the bars are sorted
-Rn_site_order <- flux_eb_result %>%
-  group_by(SITE_NEON) %>%
-  summarize(mean_dT_Rn = mean(EB_MODEL_dT_Rn)) %>%
-  arrange(desc(mean_dT_Rn)) %>%
-  pull(SITE_NEON)
-
-flux_eb_result %>%
-  select(SITE_NEON, EB_MODEL_dT_LE, EB_MODEL_dT_Rn) %>%
-  pivot_longer(-SITE_NEON) %>%
-  ggplot(aes(x=factor(SITE_NEON, levels=Rn_site_order), y=value, fill=name)) +
-  stat_summary(geom="bar", fun=mean, position="dodge") +
-  stat_summary(geom="errorbar", fun.data=function(x) mean_se(x, 2), position=position_dodge(width=0.9), width=0.3) +
-  scale_fill_manual(
-    labels=c("Cooling from transpiration", "Warming from net radiation"),
-    values=hcl(h=c(195, 15), l=65, c=100)
-  ) +
-  theme_bw() +
-  theme(panel.grid.major.x = element_blank()) +
-  labs(x="", y="Temperature forcing (K)", fill="")
   

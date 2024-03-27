@@ -170,48 +170,8 @@ lidar_constants_df <- lapply(lidar_constants, function(l) {
   )
 }) %>% bind_rows()
 
-# Plotting ----
-use_sites <- c("ABBY", "DEJU", "JERC", "OSBS", "RMNP", "TALL", "WREF")
-# Extrapolate lines for beam/diffuse coefficients
-clai <- seq(0, 7, length.out=20)
-iv_io_extrapolate <- expand.grid(clai, 1:nrow(lidar_constants_df)) %>%
-  cbind(lidar_constants_df[.$Var2, ]) %>%
-  select(-Var2) %>% rename(clai = Var1) %>%
-  mutate(Beam = exp(kb_real * clai),
-         Diffuse = exp(kd_real * clai)) %>%
-  pivot_longer(c(Beam, Diffuse))
-
-# Plot mean transmission points over the fitted line
-(plot_mean_transmission <- iv_io_data %>%
-  filter(site %in% use_sites) %>%
-  ggplot(aes(x=cum_lai, y=iv_io_mean)) +
-  geom_point(aes(color=proportion_diffuse_bin)) +
-  geom_line(data=iv_io_extrapolate %>% filter(site %in% use_sites), 
-            mapping=aes(x=clai, y=value, group=name, linetype=name)) +
-  facet_wrap(~ site, scales="free") +
-  labs(x="Cumulative LAI", y="Proportion available light",
-       color="Proportion diffuse light", linetype="") +
-  scale_y_log10() + theme_bw())
-
 write_if_not_exist(lidar_constants_df, "data_out/neon_lidar_constants.csv")
 write_if_not_exist(iv_io_data, "data_out/neon_lidar_transmission_data.csv")
-
-# Plot LAD profiles for each site
-(plot_lad_profiles <- ggplot(lad_data, aes(x=z)) +
-  geom_line(aes(y=lad)) +
-  coord_flip() +
-  facet_wrap(~ site, scales="free") +
-  labs(y=expression("Leaf area density"~frac(m^2, m^3)),
-       x="Height above ground (m)") +
-  theme_bw())
-
-(plot_cum_lai_profiles <- ggplot(lad_data, aes(x=z)) +
-    geom_line(aes(y=cum_lai)) +
-    coord_flip() +
-    facet_wrap(~ site, scales="free") +
-    labs(y=expression("Cumulative LAI"~frac(m^2, m^2)),
-         x="Height above ground (m)") +
-    theme_bw())
 
 lad_data %>%
   drop_na() %>%

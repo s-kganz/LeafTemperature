@@ -139,7 +139,7 @@ do_old_wref_interpolation <- function() {
 }
 
 if (sys.nframe() == 0) {
-  do_old_wref_interpolation()
-  #do_neon_interpolation()
+  #do_old_wref_interpolation()
+  do_neon_interpolation()
 }
   

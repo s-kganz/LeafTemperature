@@ -73,31 +73,6 @@ fits <- flux_tower_join %>%
   map(as.data.frame) %>%
   imap_dfr(~ mutate(.x, site = .y))
 
-# Show fit on top of raw data ----
-sw_range <- seq(0, 1250)
-fit_pred <- fits %>%
-  mutate(
-    A_pred = pmap(
-      list(k_sat, phi_J, theta_J, Rd),
-      function(k_sat, phi_J, theta_J, Rd) {
-        data.frame(
-          A = marshall_biscoe_1980(sw_range, k_sat, phi_J, theta_J) - Rd,
-          Q = sw_range
-        )
-      }
-    )
-  ) %>%
-  select(site, A_pred) %>% unnest(A_pred)
-
-ggplot(NULL) +
-  geom_point(mapping=aes(x=.Qabs, y=.A), data=flux_tower_join, alpha=0.1) +
-  geom_line(mapping=aes(x=Q, y=A, color="Fit"), data=fit_pred, lwd=1, show.legend = FALSE) +
-  facet_wrap(~ site, scales="free_y") +
-  labs(x="Top-of-canopy shortwave (W / m2)",
-       y="Canopy photosynthesis (umol CO2 / m2 / s)",
-       color="") +
-  theme_bw()
-
 # Save model coefficients and fit ----
 write_if_not_exist(fits, "data_out/cross_site_aq_constants.csv")
 write_if_not_exist(flux_tower_join, "data_out/cross_site_aq_data.csv")
