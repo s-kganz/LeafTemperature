@@ -1,3 +1,8 @@
+# This script was written for use with the flux and TIR data from the Still 
+# et al. PNAS paper. The source data for this is available at
+# https://zenodo.org/records/6862565. The script is here in case anyone else
+# wants to play with these data, but the analysis is not included in our paper.
+
 library(tidyverse)
 library(readxl)
 source("scripts/tower_util.R")

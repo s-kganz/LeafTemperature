@@ -6,6 +6,7 @@
 library(neonUtilities)
 library(tidyverse)
 library(foreach)
+source("scripts/tower_util.R")
 
 # Determine site availability ----
 # We only use data in the non-provisional state since this means we can assume 
@@ -97,4 +98,4 @@ flux_final <- foreach(site=names(flux_clean), data=flux_clean,
     return(data_clean)
   }
 
-write_csv(flux_final, "data_out/cross_site_flux.csv")
+write_if_not_exist(flux_final, "data_out/cross_site_flux.csv")

@@ -5,6 +5,8 @@ library(terra)
 sites <- read.csv("data_working/neon_site_metadata.csv")
 outdir <- file.path("data_working", "neon_neartower_lidar")
 
+if (!dir.exists(outdir)) dir.create(outdir)
+
 product <- "DP1.30003.001"
 lidar_avail <- getProductInfo(product)
 

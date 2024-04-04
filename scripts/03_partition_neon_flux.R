@@ -197,5 +197,5 @@ process_old_wref_flux <- function() {
 
 if (sys.nframe() == 0) {
   process_neon_flux()
-  process_old_wref_flux()
+  #process_old_wref_flux()
 }

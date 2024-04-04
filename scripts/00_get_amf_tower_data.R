@@ -7,6 +7,8 @@ source("scripts/tower_util.R")
 sites <- read_csv("data_working/neon_site_metadata.csv")
 outdir <- file.path("data_working", "neon_flux")
 
+if (!dir.exists(outdir)) dir.create(outdir)
+
 flux_files <- amf_download_base(
   "ganzk",
   "ganzk@uw.edu",

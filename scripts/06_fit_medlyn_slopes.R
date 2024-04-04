@@ -314,5 +314,5 @@ old_wref_fit_driver <- function() {
 
 if (sys.nframe() == 0) {
   neon_fit_driver()
-  old_wref_fit_driver()
+  #old_wref_fit_driver()
 }
