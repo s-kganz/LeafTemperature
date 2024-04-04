@@ -2,13 +2,6 @@ library(hemispheR)
 library(neonUtilities)
 library(tidyverse)
 
-fileName <- "data_in/neon_token"
-if (file.exists(fileName)) {
-  token <- readChar(fileName, file.info(fileName)$size)
-} else {
-  token <- NA_character_
-}
-
 make_curl_command <- function(url, outfile) {
   paste("curl", url, "-L --output", outfile)
 }
@@ -108,8 +101,10 @@ calculate_dhp_lai_manual <- function(url, verbose=FALSE, ...) {
   return(result)
 }
 
-if (sys.nframe() == 0) {
-  sites <- read_csv("data_working/neon_site_metadata.csv") %>% pull(site_neon)
+manual_dhp_lai_driver <- function(site_meta, outdir, token) {
+  if (!dir.exists(outdir)) dir.create(outdir)
+  
+  sites <- site_meta %>% pull(site_neon)
   
   dhp_product <- loadByProduct(
     "DP1.10017.001",
@@ -127,9 +122,12 @@ if (sys.nframe() == 0) {
     filter(year >= 2019) %>%
     group_by(siteID) %>%
     # Sample at least 10 images from each site
-    slice(sample(min(10, n())))
+    slice_sample(min(10, n()))
   
-  write_if_not_exist(dhp_table, "data_out/neon_sampled_dhp_images.csv")
+  write_if_not_exist(
+    dhp_table, 
+    file.path(outdir, neon_sampled_dhp_images.csv)
+  )
   
   neon_lai_list <- lapply(
     1:nrow(dhp_table), function(i) {
@@ -155,7 +153,7 @@ if (sys.nframe() == 0) {
   median_lai <- neon_lai %>% group_by(site) %>% summarize(L_dhp = median(L))
   
   # Compare the DHP-derived LAI with other estimates in the literature
-  known_lais <- read_csv("data_working/neon_site_metadata.csv") %>%
+  known_lais <- site_meta %>%
     select(site_neon, lai) %>% filter(!is.na(lai)) %>%
     left_join(median_lai, by=c("site_neon"="site"))
   
@@ -171,5 +169,8 @@ if (sys.nframe() == 0) {
     # a section of forest where there are enough trees to yield a meaningful LAI.
     mutate(L_dhp_corrected = pmax(1, L_dhp * correction_factor))
   
-  write_if_not_exist(neon_lai_corrected, "data_out/neon_sampled_dhp_lai.csv")
+  write_if_not_exist(
+    neon_lai_corrected, 
+    file.path(outdir, "neon_sampled_dhp_lai.csv")
+  )
 }

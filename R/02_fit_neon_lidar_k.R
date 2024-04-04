@@ -9,74 +9,15 @@ library(lidR)
 library(tidyverse)
 library(amerifluxr)
 
-source("scripts/tower_util.R")
-
-# Prepare site-level LAIs ----
-site_lai <- read_csv("data_out/neon_sampled_dhp_lai.csv")
-
-# If there is a prior estimate of LAI in the literature, use it. Otherwise,
-# use the DHP-derived estimate.
-site_info <- read_csv("data_working/neon_site_metadata.csv") %>%
-  left_join(site_lai, by=c("site_neon"="site")) %>%
-  mutate(
-    lai_best = ifelse(is.na(lai), L_dhp_corrected, lai)
-  )
-
-# Prepare light attenuation data ----
-tower_files <- list.files("data_working/neon_flux", pattern="*.csv",
-                          full.names=TRUE)
-
-measure_heights <- amf_var_info()
+#source("scripts/tower_util.R")
 
 # For each PAR observation we need to know the following:
 # - What height was it measured at?
 # - What was the PPFD value for this observation?
 # - What was the TOC shortwave flux?
 # - What proportion of incoming shortwave was diffuse?
-cat("Preparing PAR attenuation data...")
-tower_toc_rad <- lapply(tower_files, function(file) {
-  # Extract site information from filename
-  site_amf <- str_remove(basename(file), ".csv")
-  site_neon <- site_info$site_neon[match(site_amf, site_info$site_ameriflux)]
-  cat("\t", site_neon, "\n")
-  
-  # Open tower observations
-  this_tower <- read_csv(file, col_types=cols())
-  
-  # Get measurement heights for this tower
-  this_heights <- measure_heights %>% filter(Site_ID == site_amf)
-  sw_vars <- grep("SW_IN_1_1_\\d", names(this_tower), value=TRUE)
-  ppfd_vars <- grep("PPFD_IN_\\d_\\d_\\d", names(this_tower), value=TRUE)
-  ppfd_z <- this_heights %>%
-    filter(Variable %in% ppfd_vars) %>% 
-    select(Variable, Height)
-  
-  
-  this_tower %>%
-    mutate(
-      # Attach site information for later
-      SITE_NEON = site_neon,
-      # Compute top of canopy values
-      SW_IN_TOC = rowMeans(this_tower %>% select(all_of(sw_vars)), 
-                           na.rm=TRUE),
-      PPFD_IN_TOC = PPFD_IN_1_1_1,
-      proportion_diffuse = SW_DIF / SW_IN_TOC,
-      proportion_diffuse = pmin(pmax(proportion_diffuse, 0), 1)
-    ) %>%
-    # Drop observations without TOC values and values at night
-    filter(!is.nan(SW_IN_TOC), !is.na(PPFD_IN_TOC), SW_IN_TOC > 100) %>%
-    # Drop unnecessary columns
-    select(SITE_NEON, PPFD_IN_TOC, proportion_diffuse, 
-           all_of(ppfd_vars)) %>%
-    # Pivot PAR observations to join in measurement heights
-    pivot_longer(all_of(ppfd_vars), 
-                 names_to = "ppfd_variable", values_to="ppfd_value") %>%
-    left_join(ppfd_z, by=c("ppfd_variable"="Variable")) %>%
-    # Cleanup
-    rename(ppfd_z = Height) %>%
-    filter(!is.na(ppfd_value))
-  
-}) %>% bind_rows()
+# cat("Preparing PAR attenuation data...")
+
 
 # Fit LiDAR attenuation constants ----
 fit_lidar_constants <- function(site, site_lai, zmax=NA, zmin=1) {
@@ -137,42 +78,102 @@ fit_lidar_constants <- function(site, site_lai, zmax=NA, zmin=1) {
   ))
 }
 
-lidar_constants <- lapply(
-  1:nrow(site_info),
-  function(i) {
-    fit_lidar_constants(
-      site=site_info$site_neon[i],
-      site_lai=site_info$lai_best[i],
-      zmax=site_info$canopy_height[i],
-      zmin=1
+fit_neon_lidar_k <- function(site_meta, site_lai, flux_dir, outdir) {
+  # Prepare site-level LAIs ----
+  # If there is a prior estimate of LAI in the literature, use it. Otherwise,
+  # use the DHP-derived estimate.
+  site_meta
+    left_join(site_lai, by=c("site_neon"="site")) %>%
+    mutate(
+      lai_best = ifelse(is.na(lai), L_dhp_corrected, lai)
     )
-  }
-)
-
-# Extract results ----
-
-# LAD profiles
-lad_data <- lapply(lidar_constants, function(l) {
-  l$lad_profile %>% mutate(site = l$site)
-}) %>% bind_rows()
-
-# Light attenuation data
-iv_io_data <- lapply(lidar_constants, function(l) l$iv_io_data) %>% bind_rows()
-
-# Attenuation constants
-lidar_constants_df <- lapply(lidar_constants, function(l) {
-  list(
-    site=l$site,
-    lai_coef=l$lai_coef,
-    # Force attenuation coefficients less than 0
-    kb_real=min(unname(l$rad_coef[1]), 0),
-    kd_real=min(unname(l$rad_coef[1] + l$rad_coef[2]), 0)
+  
+  # Prepare light attenuation data ----
+  tower_files <- list.files(flux_dir, pattern="*.csv",
+                            full.names=TRUE)
+  
+  measure_heights <- amf_var_info()
+  
+  tower_toc_rad <- lapply(tower_files, function(file) {
+    # Extract site information from filename
+    site_amf <- str_remove(basename(file), ".csv")
+    site_neon <- site_meta$site_neon[match(site_amf, site_meta$site_ameriflux)]
+    cat("\t", site_neon, "\n")
+    
+    # Open tower observations
+    this_tower <- read_csv(file, col_types=cols())
+    
+    # Get measurement heights for this tower
+    this_heights <- measure_heights %>% filter(Site_ID == site_amf)
+    sw_vars <- grep("SW_IN_1_1_\\d", names(this_tower), value=TRUE)
+    ppfd_vars <- grep("PPFD_IN_\\d_\\d_\\d", names(this_tower), value=TRUE)
+    ppfd_z <- this_heights %>%
+      filter(Variable %in% ppfd_vars) %>% 
+      select(Variable, Height)
+    
+    
+    this_tower %>%
+      mutate(
+        # Attach site information for later
+        SITE_NEON = site_neon,
+        # Compute top of canopy values
+        SW_IN_TOC = rowMeans(this_tower %>% select(all_of(sw_vars)), 
+                             na.rm=TRUE),
+        PPFD_IN_TOC = PPFD_IN_1_1_1,
+        proportion_diffuse = SW_DIF / SW_IN_TOC,
+        proportion_diffuse = pmin(pmax(proportion_diffuse, 0), 1)
+      ) %>%
+      # Drop observations without TOC values and values at night
+      filter(!is.nan(SW_IN_TOC), !is.na(PPFD_IN_TOC), SW_IN_TOC > 100) %>%
+      # Drop unnecessary columns
+      select(SITE_NEON, PPFD_IN_TOC, proportion_diffuse, 
+             all_of(ppfd_vars)) %>%
+      # Pivot PAR observations to join in measurement heights
+      pivot_longer(all_of(ppfd_vars), 
+                   names_to = "ppfd_variable", values_to="ppfd_value") %>%
+      left_join(ppfd_z, by=c("ppfd_variable"="Variable")) %>%
+      # Cleanup
+      rename(ppfd_z = Height) %>%
+      filter(!is.na(ppfd_value))
+    
+  }) %>% bind_rows()
+  
+  lidar_constants <- lapply(
+    1:nrow(site_meta),
+    function(i) {
+      fit_lidar_constants(
+        site=site_meta$site_neon[i],
+        site_lai=site_meta$lai_best[i],
+        zmax=site_meta$canopy_height[i],
+        zmin=1
+      )
+    }
   )
-}) %>% bind_rows()
-
-write_if_not_exist(lidar_constants_df, "data_out/neon_lidar_constants.csv")
-write_if_not_exist(iv_io_data, "data_out/neon_lidar_transmission_data.csv")
-
-lad_data %>%
-  drop_na() %>%
-  write_if_not_exist("data_out/neon_lad_profiles.csv")
+  
+  # Extract results ----
+  
+  # LAD profiles
+  lad_data <- lapply(lidar_constants, function(l) {
+    l$lad_profile %>% mutate(site = l$site)
+  }) %>% bind_rows()
+  
+  # Light attenuation data
+  iv_io_data <- lapply(lidar_constants, function(l) l$iv_io_data) %>% bind_rows()
+  
+  # Attenuation constants
+  lidar_constants_df <- lapply(lidar_constants, function(l) {
+    list(
+      site=l$site,
+      lai_coef=l$lai_coef,
+      # Force attenuation coefficients less than 0
+      kb_real=min(unname(l$rad_coef[1]), 0),
+      kd_real=min(unname(l$rad_coef[1] + l$rad_coef[2]), 0)
+    )
+  }) %>% bind_rows()
+  
+  write_if_not_exist(lidar_constants_df, file.path(outdir, "neon_lidar_constants.csv"))
+  write_if_not_exist(iv_io_data, file.path(outdir, "neon_lidar_transmission_data.csv"))
+  lad_data %>%
+    drop_na() %>%
+    write_if_not_exist(file.path(outdir, "neon_lad_profiles.csv"))
+}

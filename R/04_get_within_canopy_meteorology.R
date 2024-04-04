@@ -11,33 +11,14 @@
 
 library(tidyverse)
 library(foreach)
-source("scripts/tower_util.R")
+#source("scripts/tower_util.R")
 
 # Read data ----
 # Site LAI & metadata
-site_meta <- read_csv("data_working/neon_site_metadata.csv") %>%
-  left_join(
-    read_csv("data_out/neon_sampled_dhp_lai.csv"),
-    by=c("site_neon"="site")
-  ) %>%
-  mutate(
-    lai_best = ifelse(is.na(lai), L_dhp_corrected, lai)
-  )
 
-# LAD profiles
-site_lad <- read_csv("data_out/neon_lad_profiles.csv")
-
-# Flux timestamps
-site_flux <- read_csv("data_out/cross_site_flux_partition_qc.csv") %>%
-  select(site, timeBgn)
-
-# Set variables to interpolate
-regexes <- c("TA_\\d_\\d_\\d", "H2O.*_\\d_\\d_\\d", "CO2_.*\\d_\\d_\\d",
-             "WS_\\d_\\d_\\d")
-prefixes <- c("TA_", "H2O_", "CO2_", "WS_")
 
 # Interpolation functions ----
-neon_interpolation_driver <- function(site_amf, site_neon, tower, l) {
+neon_interpolation_driver <- function(site_amf, site_neon, site_lad, tower, l) {
   ## Determine z positions corresponding to l ----
   this_lad_profile <- site_lad %>% filter(site == site_neon)
   
@@ -70,7 +51,7 @@ neon_interpolation_driver <- function(site_amf, site_neon, tower, l) {
     pivot_wider(names_from=varname, values_from=value)
 }
 
-do_neon_interpolation <- function() {
+do_neon_interpolation <- function(site_meta, site_lai, site_flux, site_lad, outdir) {
   # Run interpolation
   all_interps <- foreach(i=1:nrow(site_meta), .combine=rbind) %do% {
     site_neon <- site_meta$site_neon[i]
@@ -83,23 +64,23 @@ do_neon_interpolation <- function() {
       file.path("data_working", "neon_flux", str_c(site_amf, ".csv"))
     )
     
-    cat("Now processing site", site_neon, "\n")
+    #cat("Now processing site", site_neon, "\n")
     # Filter to timestamps that have valid fluxes. This is optional, just makes
     # interpolation go much faster.
     usable_timestamps <- site_flux %>%
       filter(site == site_neon) %>%
       pull(timeBgn)
     
-    cat("Usable timestamps:", length(usable_timestamps), "\n")
+    #cat("Usable timestamps:", length(usable_timestamps), "\n")
     
     this_tower_filter <- this_tower %>%
       filter(TIMESTAMP %in% usable_timestamps)
     
-    neon_interpolation_driver(site_amf, site_neon, this_tower_filter, this_l)
+    neon_interpolation_driver(site_amf, site_neon, site_lad, this_tower_filter, this_l)
   }
   
   write_if_not_exist(all_interps, 
-                     "data_out/cross_site_interpolated_meteorology.csv")
+                     file.path(outdir, "cross_site_interpolated_meteorology.csv"))
 }
 
 do_old_wref_interpolation <- function() {
@@ -138,8 +119,29 @@ do_old_wref_interpolation <- function() {
   write_if_not_exist(wref_interp, "data_out/old_wref_interpolated_meteorology.csv")
 }
 
-if (sys.nframe() == 0) {
-  #do_old_wref_interpolation()
-  do_neon_interpolation()
+get_within_canopy_meteorology <- function(site_meta, site_lai, site_lad, site_flux, outdir) {
+  site_meta <- site_meta %>%
+    left_join(
+      site_lai,
+      by=c("site_neon"="site")
+    ) %>%
+    mutate(
+      lai_best = ifelse(is.na(lai), L_dhp_corrected, lai)
+    )
+  
+  # LAD profiles
+  site_lad <- read_csv("data_out/neon_lad_profiles.csv")
+  
+  # Only pull the timestamps from the flux table so we cut down on processing
+  # time.
+  site_flux <- site_flux %>%
+    select(site, timeBgn)
+  
+  # Set variables to interpolate
+  regexes <- c("TA_\\d_\\d_\\d", "H2O.*_\\d_\\d_\\d", "CO2_.*\\d_\\d_\\d",
+               "WS_\\d_\\d_\\d")
+  prefixes <- c("TA_", "H2O_", "CO2_", "WS_")
+  
+  do_neon_interpolation(site_meta, site_lai, site_flux, site_lad, outdir)
 }
   

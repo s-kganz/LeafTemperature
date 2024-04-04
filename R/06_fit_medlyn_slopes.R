@@ -5,16 +5,9 @@ library(tidyverse)
 library(bigleaf)
 library(RcppRoll)
 library(robustbase)
-source("scripts/energy_balance/air.R")
-source("scripts/energy_balance/leaf.R")
-source("scripts/tower_util.R")
-
-RAIN_FILTER <- 3 # days
-
-meta <- read_csv("data_working/neon_site_metadata.csv") %>%
-  left_join(read_csv("data_out/neon_sampled_dhp_lai.csv"), 
-            by=c("site_neon"="site")) %>%
-  mutate(L_best = ifelse(is.na(lai), L_dhp, lai))
+#source("scripts/energy_balance/air.R")
+#source("scripts/energy_balance/leaf.R")
+#source("scripts/tower_util.R")
 
 do_medlyn_fit <- function(tower, d, site, roughness_d, roughness_z0m, zr, zh) {
   # Filtering ----
@@ -121,7 +114,7 @@ do_medlyn_fit <- function(tower, d, site, roughness_d, roughness_z0m, zr, zh) {
        data = tower_gs)
 }
 
-neon_fit_medlyn <- function(site, tower, flux, zr, zh, L) {
+neon_fit_medlyn <- function(site, tower, flux, zr, zh, L, rain_filter=3) {
   cat("Now processing", site, "\n")
   # Select needed columns from tower ----
   
@@ -167,7 +160,7 @@ neon_fit_medlyn <- function(site, tower, flux, zr, zh, L) {
     mutate(date = as.Date(TIMESTAMP)) %>%
     group_by(date) %>%
     summarize(P = sum(P, na.rm = TRUE)) %>%
-    mutate(P_roll_sum = roll_sumr(P, n = RAIN_FILTER+1)) %>%
+    mutate(P_roll_sum = roll_sumr(P, n = rain_filter+1)) %>%
     filter(P_roll_sum == 0)
   
   tower_transp_only <- tower_select %>%
@@ -206,17 +199,17 @@ neon_fit_medlyn <- function(site, tower, flux, zr, zh, L) {
   }
 }
 
-neon_fit_driver <- function() {
+neon_fit_driver <- function(site_meta, site_flux_qc, tower_dir, outdir, rain_filter=3) {
   flux <- read_csv("data_out/cross_site_flux_partition_qc.csv")
   
-  medlyn_fits <- lapply(1:nrow(meta), function(i) {
-    this_site_amf  <- meta$site_ameriflux[i]
-    this_site_neon <- meta$site_neon[i]
-    this_zr        <- meta$tower_height[i]
-    this_zh        <- meta$canopy_height[i]
-    this_L         <- meta$L_best[i]
+  medlyn_fits <- lapply(1:nrow(site_meta), function(i) {
+    this_site_amf  <- site_meta$site_ameriflux[i]
+    this_site_neon <- site_meta$site_neon[i]
+    this_zr        <- site_meta$tower_height[i]
+    this_zh        <- site_meta$canopy_height[i]
+    this_L         <- site_meta$L_best[i]
     
-    this_flux <- flux %>%
+    this_flux <- site_flux_qc %>%
       filter(site == this_site_neon)
     
     if (nrow(this_flux) == 0) {
@@ -224,20 +217,27 @@ neon_fit_driver <- function() {
       return(list(site=this_site_amf, g0=NA, g1=NA, data=NA))
     }
     
-    this_tower_file <- file.path("data_working/neon_flux", str_c(this_site_amf, ".csv"))
+    this_tower_file <- file.path(tower_dir, str_c(this_site_amf, ".csv"))
     
     this_tower <- read_csv(this_tower_file, col_types=cols()) # Quiet, you!
     
     neon_fit_medlyn(this_site_amf, this_tower,
-                    this_flux, this_zr, this_zh, this_L)
+                    this_flux, this_zr, this_zh, this_L, fain_filter)
   })
   
   medlyn_data <- lapply(medlyn_fits, function(x) x$data)
   medlyn_df <- medlyn_data[!is.na(medlyn_data)] %>% bind_rows()
   medlyn_coefs <- lapply(medlyn_fits, function(x) x[-4]) %>% bind_rows()
   
-  write_if_not_exist(medlyn_df, "data_out/cross_site_medlyn_fit_results.csv")
-  write_if_not_exist(medlyn_coefs, "data_out/cross_site_medlyn_coefficients.csv")
+  write_if_not_exist(
+    medlyn_df, 
+    file.path(outdir, "cross_site_medlyn_fit_results.csv")
+  )
+  
+  write_if_not_exist(
+    medlyn_coefs,
+    file.path(outdir, "cross_site_medlyn_coefficients.csv")
+  )
 }
 
 old_wref_fit_driver <- function() {
@@ -312,7 +312,13 @@ old_wref_fit_driver <- function() {
   saveRDS(wref_pars, file="data_out/old_wref_medlyn_roughness_params.rds")
 }
 
-if (sys.nframe() == 0) {
-  neon_fit_driver()
-  #old_wref_fit_driver()
+fit_medlyn_slopes <- function(site_meta, site_lai, site_flux_qc, tower_dir, 
+                              outdir, rain_filter=3) {
+  
+  site_meta <- site_meta %>%
+    left_join(site_lai, 
+              by=c("site_neon"="site")) %>%
+    mutate(L_best = ifelse(is.na(lai), L_dhp, lai))
+  
+  neon_fit_driver(site_meta, site-flux_qc, tower_dir, outdir, rain_filter)
 }

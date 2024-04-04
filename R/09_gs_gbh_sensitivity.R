@@ -4,8 +4,8 @@
 library(tidyverse)
 library(colorspace)
 library(metR)
-source("scripts/energy_balance/leaf_eb_numeric.R")
-source("scripts/tower_util.R")
+#source("scripts/energy_balance/leaf_eb_numeric.R")
+#source("scripts/tower_util.R")
 
 
 # Driver functions ----
@@ -60,38 +60,43 @@ energy_balance_conductance_driver <- function(Ta, gs, gbH, Pa, RH, SW_dn, LW_dn,
   return(optim_result$minimum)
 }
 
-# Set parameters ----
-gs_min <- 0.01
-gs_max <- 0.5
-gbH_min <- 0.75
-gbH_max <- 5
-gs_values <- seq(gs_min, gs_max, length.out=100)
-gbH_values <- seq(gbH_min, gbH_max, length.out=100)
-
-grid <- expand.grid(gs_values, gbH_values) %>%
-  rename(
-    gs = Var1,
-    gbH = Var2
-  ) %>%
-  # Set defaults
-  mutate(
-    Ta = 293, # K
-    Pa = 100, # kPa
-    RH = 50, # %
-    SW_dn = 800, # W m-2
-    LW_dn = 600, # W m-2
-    a_lw = 0.98, # -
-    a_sw = 0.50  # -
-  )
-
-# Run energy balance ----
-grid_eb <- grid %>%
-  mutate(
-    Tl = pmap_dbl(list(Ta, gs, gbH, Pa, RH, SW_dn, LW_dn),
-                  energy_balance_conductance_driver,
-                  .progress="EB conductance sensitivity"),
-    dT = Tl - Ta
-  )
-
-write_if_not_exist(grid_eb, "data_out/model_runs/gs_gbh_sensitivity.csv")
+gs_gbh_sensitivity <- function(outdir, 
+                               gs_min=0.01, gs_max=0.5, gbH_min=0.75, gbH_max=5,
+                               Ta=293, Pa=100, RH=50, SW_dn=800,
+                               LW_dn=600, a_lw=0.98, a_sw=0.50) {
+  # Set parameters ----
+  gs_min <- 0.01
+  gs_max <- 0.5
+  gbH_min <- 0.75
+  gbH_max <- 5
+  gs_values <- seq(gs_min, gs_max, length.out=100)
+  gbH_values <- seq(gbH_min, gbH_max, length.out=100)
+  
+  grid <- expand.grid(gs_values, gbH_values) %>%
+    rename(
+      gs = Var1,
+      gbH = Var2
+    ) %>%
+    # Set defaults
+    mutate(
+      Ta = 293, # K
+      Pa = 100, # kPa
+      RH = 50, # %
+      SW_dn = 800, # W m-2
+      LW_dn = 600, # W m-2
+      a_lw = 0.98, # -
+      a_sw = 0.50  # -
+    )
+  
+  # Run energy balance ----
+  grid_eb <- grid %>%
+    mutate(
+      Tl = pmap_dbl(list(Ta, gs, gbH, Pa, RH, SW_dn, LW_dn),
+                    energy_balance_conductance_driver,
+                    .progress="EB conductance sensitivity"),
+      dT = Tl - Ta
+    )
+  
+  write_if_not_exist(grid_eb, file.path(outdir, "gs_gbh_sensitivity.csv"))
+}
        

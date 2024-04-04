@@ -1,8 +1,8 @@
 library(tidyverse)
 library(REddyProc)
 # For VPD function
-source("scripts/energy_balance/air.R")
-source("scripts/tower_util.R")
+#source("scripts/energy_balance/air.R")
+#source("scripts/tower_util.R")
 
 run_reddy_proc <- function(site, lat, lon, table, ...) {
   table <- filterLongRuns(table, "NEE")
@@ -193,9 +193,4 @@ process_old_wref_flux <- function() {
     select(-NEE_model, -reldiff)
   
   write_if_not_exist(wref_flux_final, "data_out/old_wref_flux_partition.csv")
-}
-
-if (sys.nframe() == 0) {
-  process_neon_flux()
-  #process_old_wref_flux()
 }
