@@ -9,8 +9,6 @@ library(lidR)
 library(tidyverse)
 library(amerifluxr)
 
-#source("scripts/tower_util.R")
-
 # For each PAR observation we need to know the following:
 # - What height was it measured at?
 # - What was the PPFD value for this observation?
@@ -20,7 +18,8 @@ library(amerifluxr)
 
 
 # Fit LiDAR attenuation constants ----
-fit_lidar_constants <- function(site, site_lai, zmax=NA, zmin=1) {
+fit_lidar_constants <- function(site, site_lai, tower_toc_rad, lidar_dir, 
+                                zmax=NA, zmin=1) {
   # Z where cumulative LAI == total LAI and measurement height of Io
   if (is.na(zmax)) {
     zmax <- tower_toc_rad %>% filter(SITE_NEON == site) %>% 
@@ -28,7 +27,7 @@ fit_lidar_constants <- function(site, site_lai, zmax=NA, zmin=1) {
   }
   
   las <- readLAS(file.path(
-    "data_working/neon_neartower_lidar", str_c(site, ".laz")
+    lidar_dir, str_c(site, ".laz")
   )) %>%
     filter_poi(Z > zmin, Z < zmax)
   
@@ -78,21 +77,21 @@ fit_lidar_constants <- function(site, site_lai, zmax=NA, zmin=1) {
   ))
 }
 
-fit_neon_lidar_k <- function(site_meta, site_lai, flux_dir, outdir) {
+fit_neon_lidar_k <- function(site_meta, site_lai, tower_dir, lidar_dir, outdir) {
   # Prepare site-level LAIs ----
   # If there is a prior estimate of LAI in the literature, use it. Otherwise,
   # use the DHP-derived estimate.
-  site_meta
+  site_meta <- site_meta %>%
     left_join(site_lai, by=c("site_neon"="site")) %>%
     mutate(
       lai_best = ifelse(is.na(lai), L_dhp_corrected, lai)
     )
   
   # Prepare light attenuation data ----
-  tower_files <- list.files(flux_dir, pattern="*.csv",
+  tower_files <- list.files(tower_dir, pattern="*.csv",
                             full.names=TRUE)
   
-  measure_heights <- amf_var_info()
+  measure_heights <- amf_var_heights()
   
   tower_toc_rad <- lapply(tower_files, function(file) {
     # Extract site information from filename
@@ -144,6 +143,8 @@ fit_neon_lidar_k <- function(site_meta, site_lai, flux_dir, outdir) {
       fit_lidar_constants(
         site=site_meta$site_neon[i],
         site_lai=site_meta$lai_best[i],
+        tower_toc_rad=tower_toc_rad,
+        lidar_dir=lidar_dir,
         zmax=site_meta$canopy_height[i],
         zmin=1
       )

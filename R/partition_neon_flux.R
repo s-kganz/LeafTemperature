@@ -1,8 +1,5 @@
 library(tidyverse)
 library(REddyProc)
-# For VPD function
-#source("scripts/energy_balance/air.R")
-#source("scripts/tower_util.R")
 
 run_reddy_proc <- function(site, lat, lon, table, ...) {
   table <- filterLongRuns(table, "NEE")
@@ -29,8 +26,6 @@ run_reddy_proc <- function(site, lat, lon, table, ...) {
   EProc$sMRFluxPartitionUStarScens(parsE0Regression=list(TempRange=3))
   
   result <- EProc$sExportResults()
-  
-  print(names(result))
   
   if ("R_ref_uStar" %in% names(result)) {
     # Partitioning succeeded!
@@ -84,9 +79,8 @@ get_tower_data <- function(site, year) {
     return()
 }
 
-process_neon_flux <- function() {
-  site_meta <- read_csv("data_working/neon_site_metadata.csv")
-  all_flux <- read_csv("data_out/cross_site_flux.csv") %>%
+partition_neon_flux <- function(site_meta, raw_flux, outdir) {
+  grouped_flux <- raw_flux %>%
     # N.b. can't drop any rows here otherwise REddyProc complains about non-
     # equidistant time steps
     select(-timeEnd) %>%
@@ -94,25 +88,26 @@ process_neon_flux <- function() {
     group_by(site, year) %>%
     group_split()
   
-  processed_flux <- lapply(all_flux, function(flux) {
+  processed_flux <- lapply(grouped_flux, function(flux) {
     # Check that there are at least 90 days of data. If not, REddyProc won't
     # process it, so we have to throw it out
     
     # Get site/year
     site_neon <- flux$site[1]
     year <- flux$year[1]
-    print(c(site_neon, year))
+    cat("Now processing", site_neon, year, "\n")
     
     timediff <- max(flux$timeBgn) - min(flux$timeBgn)
     if (timediff < days(90)) {
-      warning(site_neon, "(", year, ")", "has less than 90 days of data. ",
-              "Returning NA.")
+      cat("Fewer than 90 days of data, returning NA for this site-year.\n")
       return(NA)
     }
     
-    if (sum(!is.na(flux$data.fluxCo2.nsae.flux)) < 3000) {
-      warning(site_neon, " (", year, ") ", "has insufficient non-NA data. ",
-              "Returning NA.")
+    # This threshold is chosen to drop site-years where NAs in the tower data
+    # prevent REddyProc from finishing successfully. Yes this is bad style,
+    # you have permission to yell at me.
+    if (sum(!is.na(flux$data.fluxCo2.nsae.flux)) < 3200) {
+      cat("Insufficient non-NA data, returning NA for this site-year.\n")
       return(NA)
     }
     
@@ -126,7 +121,7 @@ process_neon_flux <- function() {
     tower <- get_tower_data(site_amf, year)
     
     # Pass to REddyProc pipeline and cbind with original data
-    process_site_year(site_amf, site_lat, site_lon, flux, tower) %>%
+    suppressWarnings(process_site_year(site_amf, site_lat, site_lon, flux, tower)) %>%
       cbind(flux, .)
   })
   
@@ -155,7 +150,7 @@ process_neon_flux <- function() {
   
   processed_flux_df_qc %>%
     select(-year) %>%
-    write_if_not_exist("data_out/cross_site_flux_partition_qc.csv")
+    write_if_not_exist(file.path(outdir, "cross_site_flux_partition_qc.csv"))
 }
 
 process_old_wref_flux <- function() {

@@ -5,9 +5,6 @@ library(tidyverse)
 library(bigleaf)
 library(RcppRoll)
 library(robustbase)
-#source("scripts/energy_balance/air.R")
-#source("scripts/energy_balance/leaf.R")
-#source("scripts/tower_util.R")
 
 do_medlyn_fit <- function(tower, d, site, roughness_d, roughness_z0m, zr, zh) {
   # Filtering ----
@@ -200,7 +197,7 @@ neon_fit_medlyn <- function(site, tower, flux, zr, zh, L, rain_filter=3) {
 }
 
 neon_fit_driver <- function(site_meta, site_flux_qc, tower_dir, outdir, rain_filter=3) {
-  flux <- read_csv("data_out/cross_site_flux_partition_qc.csv")
+  flux <- site_flux_qc
   
   medlyn_fits <- lapply(1:nrow(site_meta), function(i) {
     this_site_amf  <- site_meta$site_ameriflux[i]
@@ -222,7 +219,7 @@ neon_fit_driver <- function(site_meta, site_flux_qc, tower_dir, outdir, rain_fil
     this_tower <- read_csv(this_tower_file, col_types=cols()) # Quiet, you!
     
     neon_fit_medlyn(this_site_amf, this_tower,
-                    this_flux, this_zr, this_zh, this_L, fain_filter)
+                    this_flux, this_zr, this_zh, this_L, rain_filter)
   })
   
   medlyn_data <- lapply(medlyn_fits, function(x) x$data)
@@ -320,5 +317,5 @@ fit_medlyn_slopes <- function(site_meta, site_lai, site_flux_qc, tower_dir,
               by=c("site_neon"="site")) %>%
     mutate(L_best = ifelse(is.na(lai), L_dhp, lai))
   
-  neon_fit_driver(site_meta, site-flux_qc, tower_dir, outdir, rain_filter)
+  neon_fit_driver(site_meta, site_flux_qc, tower_dir, outdir, rain_filter)
 }

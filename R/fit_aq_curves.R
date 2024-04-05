@@ -5,7 +5,6 @@
 
 library(tidyverse)
 library(photosynthesis)
-#source("scripts/tower_util.R")
 
 fit_aq_curves <- function(site_meta, site_flux_qc, tower_dir, outdir) {
   

@@ -11,7 +11,6 @@
 
 library(tidyverse)
 library(foreach)
-#source("scripts/tower_util.R")
 
 # Read data ----
 # Site LAI & metadata
@@ -28,12 +27,17 @@ neon_interpolation_driver <- function(site_amf, site_neon, site_lad, tower, l) {
   print(data.frame(l=l, z=interp_z))
   
   ## Do interpolation ----
+  # Set variables to interpolate
+  regexes <- c("TA_\\d_\\d_\\d", "H2O.*_\\d_\\d_\\d", "CO2_.*\\d_\\d_\\d",
+               "WS_\\d_\\d_\\d")
+  
+  prefixes <- c("TA_", "H2O_", "CO2_", "WS_")
   interp_data <- foreach(pattern=regexes, prefix=prefixes, .combine=cbind) %do% {
     cat("Interpolating regex", pattern, "...\n")
     vars_heights <- get_var_heights(names(tower), pattern, site_amf)
     vars <- vars_heights$vars
     heights <- vars_heights$heights
-    interpolate_tower_data(tower, vars, heights, interp_z, name_prefix=prefix)
+    suppressWarnings(interpolate_tower_data(tower, vars, heights, interp_z, name_prefix=prefix))
   }
 
   stopifnot(nrow(interp_data) == nrow(tower))
@@ -61,7 +65,8 @@ do_neon_interpolation <- function(site_meta, site_lai, site_flux, site_lad, outd
     this_l <- seq(0, floor(site_lai))
     
     this_tower <- read_csv(
-      file.path("data_working", "neon_flux", str_c(site_amf, ".csv"))
+      file.path(outdir, "amf_tower_data", str_c(site_amf, ".csv")),
+      col_types = cols()
     )
     
     #cat("Now processing site", site_neon, "\n")
@@ -129,18 +134,10 @@ get_within_canopy_meteorology <- function(site_meta, site_lai, site_lad, site_fl
       lai_best = ifelse(is.na(lai), L_dhp_corrected, lai)
     )
   
-  # LAD profiles
-  site_lad <- read_csv("data_out/neon_lad_profiles.csv")
-  
   # Only pull the timestamps from the flux table so we cut down on processing
   # time.
   site_flux <- site_flux %>%
     select(site, timeBgn)
-  
-  # Set variables to interpolate
-  regexes <- c("TA_\\d_\\d_\\d", "H2O.*_\\d_\\d_\\d", "CO2_.*\\d_\\d_\\d",
-               "WS_\\d_\\d_\\d")
-  prefixes <- c("TA_", "H2O_", "CO2_", "WS_")
   
   do_neon_interpolation(site_meta, site_lai, site_flux, site_lad, outdir)
 }

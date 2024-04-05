@@ -4,8 +4,9 @@ library(terra)
 
 get_neon_lidar <- function(site_meta, outdir) {
   if (!dir.exists(outdir)) dir.create(outdir)
-  
-  lidar_avail <- getProductInfo("DP1.30003.001")
+
+  product <- "DP1.30003.001"
+  lidar_avail <- getProductInfo(product)
   
   buffer_radius <- 50 # m
 
@@ -17,7 +18,9 @@ get_neon_lidar <- function(site_meta, outdir) {
     
     # Find the most recent acquisition
     site_index <- match(site_id, lidar_avail$siteCodes$siteCode)
-    acq_year_mo <- tail(lidar_avail$siteCodes$availableMonths[[site_index]], n=1)
+    avail_releases <- lidar_avail$siteCodes$availableReleases[[site_index]] %>%
+      filter(release != "PROVISIONAL")
+    acq_year_mo <- tail(avail_releases$availableMonths[[1]], n=1)
     acq_year <- strsplit(acq_year_mo, "-")[[1]][1]
     
     # Convert lat lon to UTM
