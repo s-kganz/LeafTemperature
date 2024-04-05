@@ -1,8 +1,6 @@
 library(tidyverse)
 library(amerifluxr)
 
-if (!exists("amf_var_heights_")) {amf_var_heights_ <- amf_var_info()}
-
 #' Interpolate flux tower micrometeorology data at arbitrary z positions.
 #'
 #' @param tower Data frame containing relevant tower observations.
@@ -32,14 +30,23 @@ interpolate_tower_data <- function(tower, vars, var_z, interp_z, name_prefix="")
     as.matrix()
   
   var_interp <- var_mtx %>%
-    apply(MARGIN=1, 
-          FUN=function(row) {
-            tryCatch(
-              # This will fire a warning on duplicated x values. This is not a
-              # problem so we silence it.
-              approx(var_z, row, xout=interp_z, rule=2, na.rm=TRUE)$y, 
-              error=function(e) return(rep(NA, length(interp_z))))
-          }
+    apply(
+      MARGIN = 1,
+      FUN = function(row) {
+        tryCatch(
+          # This will fire a warning on duplicated x values. This is not a
+          # problem so we silence it.
+          approx(
+            var_z,
+            row,
+            xout = interp_z,
+            rule = 2,
+            na.rm = TRUE
+          )$y,
+          error = function(e)
+            return(rep(NA, length(interp_z)))
+        )
+      }
     )
   
   # If length(interp_z) == 1, var_interp is a vector, otherwise it is a matrix.
@@ -50,6 +57,18 @@ interpolate_tower_data <- function(tower, vars, var_z, interp_z, name_prefix="")
     as.data.frame() %>% 
     setNames(str_c(name_prefix, interp_z))
 }
+
+# Make a copy of this function in this package so we can memoize it.
+# See .onLoad() in zzz.R
+
+#' Return Ameriflux variable info (possibly from cache)
+#'
+#' @return
+#' @export
+#' @importFrom memoise memoise
+#' @importFrom amerifluxr amf_var_info
+#' @examples
+amf_var_heights <- function() {amerifluxr::amf_var_info()}
 
 #' Get variables matching a regex and their height of observation.
 #'
@@ -62,7 +81,7 @@ interpolate_tower_data <- function(tower, vars, var_z, interp_z, name_prefix="")
 #'
 #' @examples
 get_var_heights <- function(all_vars, regex, site) {
-  if (!exists("amf_var_heights_")) {amf_var_heights_ <- amf_var_info()}
+  if (!exists("amf_var_heights_")) {amf_var_heights_ <- amf_var_heights()}
   stopifnot(site %in% amf_var_heights_$Site_ID)
   
   vars_select <- grep(regex, all_vars, value=TRUE)
