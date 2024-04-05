@@ -316,118 +316,118 @@ safe_save <- function(filename, plot, allow_overwrite=FALSE, ...) {
   }
 }
 
-write_all_figures <- function(outdir, overwrite=FALSE) {
+write_all_figures <- function(site_meta, search_dir, out_dir, overwrite=FALSE) {
   # Read data ----
   use_sites <- c("ABBY", "DEJU", "JERC", "OSBS", "RMNP", "TALL", "WREF")
   
   # General site metadata
-  site_meta <- read_csv("data_working/neon_site_metadata.csv") %>%
+  site_meta <- site_meta %>%
     filter(site_neon %in% use_sites)
   
   # Height of ameriflux sensors
-  sensor_heights <- amerifluxr::amf_var_info() %>%
+  sensor_heights <- amf_var_heights() %>%
     filter(Site_ID %in% site_meta$site_ameriflux) %>%
     mutate(SITE_NEON = site_meta$site_neon[match(Site_ID, site_meta$site_ameriflux)])
   
   # Lidar constants and mean transmission data
-  lidar_constants_df <- read_csv("data_out/neon_lidar_constants.csv") %>%
+  lidar_constants_df <- read_csv(file.path(search_dir, "neon_lidar_constants.csv")) %>%
     filter(site %in% use_sites)
   
-  iv_io_data <- read_csv("data_out/neon_lidar_transmission_data.csv") %>%
+  iv_io_data <- read_csv(file.path(search_dir, "neon_lidar_transmission_data.csv")) %>%
     filter(site %in% use_sites)
   
   # Medlyn model coefficients and fit
-  medlyn_data <- read_csv("data_out/cross_site_medlyn_fit_results.csv") %>%
+  medlyn_data <- read_csv(file.path(search_dir, "cross_site_medlyn_fit_results.csv")) %>%
     mutate(site_neon = site_meta$site_neon[match(site, site_meta$site_ameriflux)])
   
-  medlyn_constants <- read_csv("data_out/cross_site_medlyn_coefficients.csv") %>%
+  medlyn_constants <- read_csv(file.path(search_dir, "cross_site_medlyn_coefficients.csv")) %>%
     mutate(site_neon = site_meta$site_neon[match(site, site_meta$site_ameriflux)]) %>%
     drop_na()
   
   # AQ curve coefficients and fit
-  aq_constants <- read_csv("data_out/cross_site_aq_constants.csv") %>%
+  aq_constants <- read_csv(file.path(search_dir, "cross_site_aq_constants.csv")) %>%
     filter(site %in% use_sites)
   
-  aq_data <- read_csv("data_out/cross_site_aq_data.csv") %>%
+  aq_data <- read_csv(file.path(search_dir, "cross_site_aq_data.csv")) %>%
     filter(site %in% use_sites)
   
   # Model layer and radiometer pairings
-  model_radiometer_crosswalk <- read_csv("data_out/model_rad_height_crosswalk.csv") %>%
+  model_radiometer_crosswalk <- read_csv(file.path(search_dir, "model_run", "model_rad_height_crosswalk.csv")) %>%
     # Attach NEON site code for consistency
     mutate(SITE_NEON = site_meta$site_neon[match(SITE_AMF, site_meta$site_ameriflux)])
   
   # EB model result and lmodel2 regressions
-  eb_result <- read_csv("data_out/model_runs/cross_site_eb.csv")
-  eb_regressions <- read_csv("data_out/model_runs/cross_site_tl_ta_slopes.csv")
+  eb_result <- read_csv(file.path(search_dir, "model_run", "cross_site_eb.csv"))
+  eb_regressions <- read_csv(file.path(search_dir, "model_run", "cross_site_tl_ta_slopes.csv"))
   
   # Layer-by-layer model and radiometer comparison
-  eb_rad_tcan_summary <- read_csv("data_out/cross_site_model_rad_comparison.csv")
-  eb_rad_height_xwalk <- read_csv("data_out/model_rad_height_crosswalk.csv")
+  eb_rad_tcan_summary <- read_csv(file.path(search_dir, "model_run", "cross_site_model_rad_comparison.csv"))
+  eb_rad_height_xwalk <- read_csv(file.path(search_dir, "model_run", "model_rad_height_crosswalk.csv"))
   
   # gs/gbh sensitivity analysis
-  grid_eb <- read_csv("data_out/model_runs/gs_gbh_sensitivity.csv")
+  grid_eb <- read_csv(file.path(search_dir, "model_run", "gs_gbh_sensitivity.csv"))
   
   # Shaded GPP calculation
-  shade_gpp <- read_csv("data_out/model_runs/cross_site_shade_gpp.csv")
+  shade_gpp <- read_csv(file.path(search_dir, "model_run", "cross_site_shade_gpp.csv"))
   
   # g1 sensitivity analysis
-  wref_g1_sensitivity <- read_csv("data_out/model_runs/wref_eb_g1_sensitivity.csv")
-  wref_g1_regressions <- read_csv("data_out/model_runs/wref_g1_tl_ta_slopes.csv")
+  wref_g1_sensitivity <- read_csv(file.path(search_dir, "model_run", "wref_eb_g1_sensitivity.csv"))
+  wref_g1_regressions <- read_csv(file.path(search_dir, "model_run", "wref_g1_tl_ta_slopes.csv"))
   
   ## Generate all the figs ----
   ### Main text ----
-  safe_save(file.path(outdir, "fig1_sensor_heights.png"),
+  safe_save(file.path(out_dir, "fig1_sensor_heights.png"),
             fig1_sensor_heights(sensor_heights, site_meta),
             allow_overwrite=overwrite,
             width=6.5, height=4)
   
-  safe_save(file.path(outdir, "fig2_model_one_to_one.png"),
+  safe_save(file.path(out_dir, "fig2_model_one_to_one.png"),
             fig2_model_one_to_one(eb_rad_tcan_summary),
             allow_overwrite=overwrite,
             width=5, height=4.5)
   
-  safe_save(file.path(outdir, "fig3_regression_slopes.png"),
+  safe_save(file.path(out_dir, "fig3_regression_slopes.png"),
             fig3_regression_slopes(eb_regressions),
             allow_overwrite=overwrite,
             width=8, height=10)
   
-  safe_save(file.path(outdir, "fig4_temp_forcing.png"),
+  safe_save(file.path(out_dir, "fig4_temp_forcing.png"),
             fig4_temp_forcing(eb_result),
             allow_overwrite=overwrite,
             width=8, height=3.5)
   
-  safe_save(file.path(outdir, "fig5_gs_gbh_sensitivity.png"),
+  safe_save(file.path(out_dir, "fig5_gs_gbh_sensitivity.png"),
             fig5_gs_gbh_sensitivity(eb_result, grid_eb),
             allow_overwrite=overwrite,
             width=8, height=6)
   
-  safe_save(file.path(outdir, "fig6_shade_gpp.png"),
+  safe_save(file.path(out_dir, "fig6_shade_gpp.png"),
             fig6_shade_gpp(shade_gpp),
             allow_overwrite=overwrite,
             width=4, height=2)
   
   ### Supplemental ----
-  safe_save(file.path(outdir, "fig_s1_lidar_fit.png"),
+  safe_save(file.path(out_dir, "fig_s1_lidar_fit.png"),
             fig_s1_lidar_fit(lidar_constants_df, iv_io_data),
             allow_overwrite=overwrite,
             width=8, height=6)
   
-  safe_save(file.path(outdir, "fig_s2_medlyn_fit.png"),
+  safe_save(file.path(out_dir, "fig_s2_medlyn_fit.png"),
             fig_s2_medlyn_fit(medlyn_data, medlyn_constants),
             allow_overwrite=overwrite,
             width=6, height=6)
   
-  safe_save(file.path(outdir, "fig_s3_aq_fit.png"),
+  safe_save(file.path(out_dir, "fig_s3_aq_fit.png"),
             fig_s3_aq_fit(aq_constants, aq_data),
             allow_overwrite=overwrite,
             width=8, height=6)
   
-  safe_save(file.path(outdir, "fig_s4_rad_model_pairings.png"),
+  safe_save(file.path(out_dir, "fig_s4_rad_model_pairings.png"),
             fig_s4_rad_model_pairings(model_radiometer_crosswalk),
             allow_overwrite=overwrite,
             width=8, height=6)
   
-  safe_save(file.path(outdir, "fig_s5_g1_sensitivity.png"),
+  safe_save(file.path(out_dir, "fig_s5_g1_sensitivity.png"),
             fig_s5_g1_sensitivity(wref_g1_regressions),
             allow_overwrite=overwrite,
             width=8, height=6)
