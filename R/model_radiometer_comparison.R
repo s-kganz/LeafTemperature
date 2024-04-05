@@ -6,12 +6,11 @@
 
 library(tidyverse)
 library(amerifluxr)
-#source("scripts/tower_util.R")
 
 model_radiometer_comparison <- function(eb_result, rad_tcan, outdir) {
   
   ## Collect heights for model/radiometers ----
-  rad_heights <- amf_var_info() %>%
+  rad_heights <- amf_var_heights() %>%
     filter(Site_ID %in% unique(eb_result$SITE_AMF),
            str_detect(Variable, "T_CANOPY_\\d_\\d_\\d"),
            Height > 2) %>%

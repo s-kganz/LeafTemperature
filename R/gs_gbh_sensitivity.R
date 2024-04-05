@@ -4,8 +4,6 @@
 library(tidyverse)
 library(colorspace)
 library(metR)
-#source("scripts/energy_balance/leaf_eb_numeric.R")
-#source("scripts/tower_util.R")
 
 
 # Driver functions ----
