@@ -7,6 +7,7 @@ data_in/
 data_working/
 data_out/
 presentations/
+scratch/
 R/old
 # Office files
 *.docx
