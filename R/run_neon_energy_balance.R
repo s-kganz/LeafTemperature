@@ -4,12 +4,10 @@ library(tidyverse)
 library(suncalc)
 library(photosynthesis)
 library(lmodel2)
-#source("scripts/energy_balance/leaf_eb_still.R")
-#source("scripts/energy_balance/leaf_eb_numeric.R")
-#source("scripts/tower_util.R")
+
 run_neon_energy_balance <- function(site_meta, site_lai, site_flux_qc, 
                                     aq_constants, medlyn_constants, 
-                                    lidar_constants, tower_dir, interp_meteo, 
+                                    lidar_constants, interp_meteo, tower_dir, 
                                     outdir) {
   ## Whole-canopy fluxes ----
   flux <- site_flux_qc %>%
