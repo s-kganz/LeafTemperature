@@ -1,12 +1,15 @@
 run_analysis <- function(amf_user, amf_email, neon_token, work_dir, log=NULL,
-                         skip=rep(FALSE, 9)) {
+                         skip="nnnnnnnnnnn") {
   # Start logging
   if (!is.null(log)) sink(log, split=TRUE)
   
   steps <- c("Download tower data", "Download flux data", "Download LiDAR",
              "Calibrate LiDAR constants", "Partition flux",
              "Interpolate meteorology", "Fit AQ curves",
-             "Fit Medlyn slopes", "Run energy balance model")
+             "Fit Medlyn slopes", "Run energy balance model",
+             "Model vs. radiometer comparison", "Conductance sensivity analysis")
+  
+  skip <- (strsplit(skip, "")[[1]]) == "y"
   
   # Initial output
   cat("Output directory:", work_dir, "\n")
@@ -29,7 +32,7 @@ run_analysis <- function(amf_user, amf_email, neon_token, work_dir, log=NULL,
   
   # Download all the data we need
   if (!skip[1]) get_amf_tower_data(site_meta, work_dir, amf_user, amf_email)
-  else cat("Skipping tower data download...\n")
+  else cat("Skipping", steps[1], "\n")
   
   #TODO stack tables one at a time, rowbind results, then delete site-months
   # once we are done with them.
@@ -43,21 +46,21 @@ run_analysis <- function(amf_user, amf_email, neon_token, work_dir, log=NULL,
     cat("2: Skip and use \n")
     choice <- readline("Your choice: ")
     if (choice == 1) get_neon_flux(site_meta, neon_token, work_dir)
-    else cat("Skipping flux data download...\n")
+    else cat("Skipping", steps[2], "\n")
   } 
-  else cat("Skipping flux data download...\n")
+  else cat("Skipping", steps[2], "\n")
   
   if (!skip[3]) get_neon_lidar(site_meta, lidar_dir)
-  else cat("Skipping LiDAR data download...\n")
+  else cat("Skipping", steps[3], "\n")
   
   # Fit lidar constants
-  if (!skip[4]) fit_neon_lidar_k(site_meta, manual_lai, tower_dir, lidar_dir)
-  else cat("Skipping LiDAR constant calibration...\n")
+  if (!skip[4]) fit_neon_lidar_k(site_meta, manual_lai, tower_dir, lidar_dir, work_dir)
+  else cat("Skipping", steps[4], "\n")
   
   # Partition flux
   raw_flux <- read_csv(file.path(work_dir, "cross_site_flux.csv"))
   if (!skip[5]) partition_neon_flux(site_meta, raw_flux, work_dir)
-  else cat("Skipping flux partitioning...\n")
+  else cat("Skipping", steps[5], "\n")
   
   # Within-canopy meteorology
   partition_flux <- read_csv(file.path(work_dir, "cross_site_flux_partition_qc.csv"))
@@ -65,17 +68,17 @@ run_analysis <- function(amf_user, amf_email, neon_token, work_dir, log=NULL,
   if (!skip[6]) get_within_canopy_meteorology(site_meta, manual_lai, 
                                               lad_profiles, partition_flux,
                                               work_dir)
-  else cat("Skipping meteorology interpolation...\n")
+  else cat("Skipping", steps[6], "\n")
   
   # Fit AQ curves
   if (!skip[7]) fit_aq_curves(site_meta, partition_flux, tower_dir, work_dir)
-  else cat("Skipping AQ curve fitting...\n")
+  else cat("Skipping", steps[7], "\n")
   
   
   # Fit Medlyn slopes
   if (!skip[8]) fit_medlyn_slopes(site_meta, manual_lai, partition_flux, 
-                                  tower_dir, outdir)
-  else cat("Skipping Medlyn slope fitting...\n")
+                                  tower_dir, work_dir)
+  else cat("Skipping", steps[8], "\n")
   
   # Run the EB model
   aq_constants <- read_csv(file.path(work_dir, "cross_site_aq_constants.csv"))
@@ -95,7 +98,15 @@ run_analysis <- function(amf_user, amf_email, neon_token, work_dir, log=NULL,
       tower_dir,
       model_dir
     )
-  else cat("Skipping energy balance model run...\n")
+  else cat("Skipping", steps[9], "\n")
+  
+  eb_result <- read_csv(file.path(model_dir, "cross_site_eb.csv"))
+  rad_tcan <- read_csv(file.path(work_dir, "cross_site_tcan.csv"))
+  if (!skip[10]) model_radiometer_comparison(eb_result, rad_tcan, model_dir)
+  else cat("Skipping", steps[10], "\n")
+  
+  if (!skip[11]) gs_gbh_sensitivity(model_dir)
+  else cat("Skipping", steps[11], "\n")
   
   # Reset logging
   if (!is.null(log)) sink()
