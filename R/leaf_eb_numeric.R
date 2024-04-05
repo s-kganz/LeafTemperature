@@ -1,9 +1,5 @@
 # Another version of leaf energy balance that must be solved numerically.
 
-source("scripts/energy_balance/leaf.R")
-source("scripts/energy_balance/radiation.R")
-source("scripts/energy_balance/air.R")
-
 #' Numerical leaf energy balance model
 #'
 #' @param Tl Leaf temperature (K)

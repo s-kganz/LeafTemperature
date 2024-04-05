@@ -1,7 +1,5 @@
 # Functions to describe properties of air in energy balance models
 
-source("scripts/energy_balance/constants.R")
-
 #' Density of dry air.
 #' @param Ta Air temperature (K)
 #' @param Pa Air pressure (kPa)

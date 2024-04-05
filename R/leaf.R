@@ -1,8 +1,6 @@
 # Functions describing leaf physiology and transpiration for energy balance
 # models.
 
-source("scripts/energy_balance/constants.R")
-
 #' Leaf conductance to radiative heat transfer.
 #'
 #' @param Ta Air temperature (K)

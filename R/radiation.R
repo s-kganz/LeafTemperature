@@ -1,7 +1,5 @@
 # Within-canopy absorbed radiation models from Wang and Leuning (1998)
 
-source("scripts/energy_balance/constants.R")
-
 #' Net isothermal radiation.
 #'
 #' @param SW_dir Direct downwelling shortwave radiation (W/m2)

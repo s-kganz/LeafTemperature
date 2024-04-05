@@ -1,8 +1,3 @@
-source("scripts/energy_balance/air.R")
-source("scripts/energy_balance/radiation.R")
-source("scripts/energy_balance/leaf.R")
-source("scripts/energy_balance/constants.R")
-
 # This EB function is a modified version of the approach in Still et al. (2022).
 # In this version we use leaf temperature to calculate leaf-air VPD and net
 # radiation instead of substituting in air temperature. This means that we have
