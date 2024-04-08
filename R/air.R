@@ -9,7 +9,7 @@
 #' @return rho, air density (kg / m3)
 #' @keywords internal
 #'
-#' @examples
+#' 
 dry_air_density <- function(Ta, Pa, 
                             cp=eb_constants_$cp,
                             M=eb_constants_$Mair) {
@@ -29,7 +29,7 @@ dry_air_density <- function(Ta, Pa,
 #' @return rho_mol, molar density of dry air (mol / m3)
 #' @keywords internal
 #'
-#' @examples
+#' 
 dry_air_molar_density <- function(Ta, Pa,
                                   cp=eb_constants_$cp, 
                                   M=eb_constants_$Mair) {
@@ -47,7 +47,7 @@ dry_air_molar_density <- function(Ta, Pa,
 #'
 #' @return gamma, Psycrometric constant (kPa / K)
 #' @keywords internal
-#' @examples
+#' 
 psychrometric_constant <- function(Pa, 
                                    cp=eb_constants_$cp, 
                                    Mwr=eb_constants_$MWr,
@@ -66,7 +66,7 @@ psychrometric_constant <- function(Pa,
 #' @return desat, Slope of esat w.r.t. air temperature (kPa / K)
 #' @keywords internal
 #'
-#' @examples
+#' 
 esat_slope <- function(Ta) {
   a <- 17.27
   b <- 237.3
@@ -83,7 +83,7 @@ esat_slope <- function(Ta) {
 #' @return esat, saturation vapor pressure (kPa)
 #' @keywords internal
 #'
-#' @examples
+#' 
 saturation_vapor_pressure <- function(Ta) {
   Ta_c <- Ta - 273.15
   esat <- 0.61078 * exp((17.27 * Ta_c) / (Ta_c + 237.3))
@@ -99,7 +99,7 @@ saturation_vapor_pressure <- function(Ta) {
 #' @return vpd, vapor pressure deficit (kPa)
 #' @keywords internal
 #'
-#' @examples
+#' 
 vapor_pressure_deficit <- function(Ta, RH) {
   vpd <- saturation_vapor_pressure(Ta) * (1 - RH/100)
   return(vpd)

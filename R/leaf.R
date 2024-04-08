@@ -11,7 +11,7 @@
 #' @return gR, leaf conductance to radiative heat transfer (m/sec)
 #' @keywords internal
 #'
-#' @examples
+#' 
 conductance_radiative_heat <- function(Ta, Pa, rho, rho_mol, 
                                        a_lw=0.98,
                                        cp=eb_constants_$cp,
@@ -29,7 +29,7 @@ conductance_radiative_heat <- function(Ta, Pa, rho, rho_mol,
 #' @return gbH, conductance to sensible heat transfer (m/sec)
 #' @keywords internal
 #'
-#' @examples
+#' 
 conductance_boundary_heat_needleleaf <- function(u, d, rho_mol) {
   0.006 * rho_mol * (u^0.6 / d^0.4)
 }
@@ -44,7 +44,7 @@ conductance_boundary_heat_needleleaf <- function(u, d, rho_mol) {
 #' @return gbH, conductance to sensible heat transfer (m/sec)
 #' @keywords internal
 #'
-#' @examples
+#' 
 conductance_boundary_heat_broadleaf <- function(u, d, rho_mol) {
   0.0105 * rho_mol * (u^0.5 / d^0.5)
 }
@@ -64,7 +64,7 @@ conductance_boundary_heat_broadleaf <- function(u, d, rho_mol) {
 #' @return omega, decoupling coefficient.
 #' @keywords internal
 #'
-#' @examples
+#' 
 decoupling_coefficient <- function(gR, gbH, gs, d_esat, gamma, a_lw = 0.98) {
   eps <- d_esat / gamma
   
@@ -83,7 +83,7 @@ decoupling_coefficient <- function(gR, gbH, gs, d_esat, gamma, a_lw = 0.98) {
 #' @return LE_eq, equilibrium latent heat flux (W / m2)
 #' @keywords internal
 #'
-#' @examples
+#' 
 latent_heat_equilibrium <- function(Rn, d_esat, gamma, gR, gbH) {
   eps <- d_esat / gamma
   (eps * Rn) / (eps + 1 + gR / gbH)
@@ -98,7 +98,7 @@ latent_heat_equilibrium <- function(Rn, d_esat, gamma, gR, gbH) {
 #' @return gtot, total conductance (mol / m2 sec)
 #' @keywords internal
 #'
-#' @examples
+#' 
 total_conductance <- function(gs, gbH) {
   (1/gs + 1/(gbH * 1.08)) ^ -1
 }
@@ -114,7 +114,7 @@ total_conductance <- function(gs, gbH) {
 #' @return LE_imp, stomatally-imposed latent heat flux.
 #' @keywords internal
 #'
-#' @examples
+#' 
 latent_heat_imposed <- function(gtot, vpd, Pa, l=eb_constants_$l) {
   gtot * l * vpd / Pa
 }
@@ -129,7 +129,7 @@ latent_heat_imposed <- function(gtot, vpd, Pa, l=eb_constants_$l) {
 #' @return le, total latent heat flux (W/m2)
 #' @keywords internal
 #'
-#' @examples
+#' 
 latent_heat <- function(omega, le_eq, le_imp) {
   omega * le_eq + (1 - omega) * le_imp
 }
@@ -144,7 +144,7 @@ latent_heat <- function(omega, le_eq, le_imp) {
 #' @return H, sensible heat flux (W/m2)
 #' @keywords internal
 #'
-#' @examples
+#' 
 sensible_heat <- function(gbH, Tl, Ta) {
   2 * gbH * eb_constants_$cp * eb_constants_$Mair * (Tl - Ta)
 }
@@ -157,10 +157,10 @@ sensible_heat <- function(gbH, Tl, Ta) {
 #' @param g1 Slope parameter (kPa^0.5, usually in range 1-10)
 #' @param g0 Intercept parameter (mol / m^2 s, usually set to 0)
 #'
-#' @return
+#' @return gs, stomatal conductance (mol m-2 s-1)
 #' @keywords internal
 #'
-#' @examples
+#' 
 medlyn_gs <- function(A, VPD, CO2, g1, g0=0) {
   g0 + (1 + g1 / sqrt(VPD)) * (A / CO2)
 }

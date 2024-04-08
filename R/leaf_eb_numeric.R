@@ -17,10 +17,10 @@
 #' @param bounds Deviation from air temperature to define the search interval. For example, if Ta = 290 K and bounds = 10 K, the model will search for an optimal leaf temperature in the range of [280, 300] K.
 #' @param run_no_transp Should the model be run a second time with gs = 0.001? This is necessary to calculate temperature forcings from the fluxes. If TRUE, additional outputs are returned.
 #'
-#' @return
+#' @return If aslist == TRUE, a list containing calculated heat fluxes, conductances, and decoupling. Otherwise, just the energy balance error.
 #' @keywords internal
 #'
-#' @examples
+#' 
 energy_balance_error <- function(Tl, Ta, u, gs, Pa, RH, 
                                  SW_abs, LW_abs_dn,
                                  a_lw=0.98, a_sw=0.50, d=0.01,

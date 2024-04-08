@@ -7,13 +7,13 @@ library(amerifluxr)
 #' @param vars Vector of names in `tower` to interpolate.
 #' @param var_z Vector of heights above ground where `vars` are measured.
 #' @param interp_z Vector of heights above ground at which to interpolate `vars`.
-#' @param name_prefix String prepended to names oft he resulting data frame,
+#' @param name_prefix String prepended to names of the resulting data frame,
 #' which by default are `interp_z`.
 #'
-#' @return
-#' @export
+#' @return Dataframe with the observations in `tower` interpolated at `interp_z`
+#' 
 #'
-#' @examples
+#'
 interpolate_tower_data <- function(tower, vars, var_z, interp_z, name_prefix="") {
   stopifnot(length(vars) == length(var_z))
   stopifnot(all(vars %in% names(tower)))
@@ -61,9 +61,9 @@ interpolate_tower_data <- function(tower, vars, var_z, interp_z, name_prefix="")
 # Make a copy of this function in this package so we can memoize it.
 # See .onLoad() in zzz.R
 
-#' Return Ameriflux variable info (possibly from cache)
+#' Return Ameriflux variable info (possibly from cache). This function only exists so that it can be memoized.
 #'
-#' @return
+#' @return see \link[amerifluxr]{amf_var_info}
 #' @keywords internal
 #' @importFrom memoise memoise
 #' @importFrom amerifluxr amf_var_info
@@ -78,7 +78,7 @@ amf_var_heights <- function() {amerifluxr::amf_var_info()}
 #' @return a list containing the regex'd varnames and their heights
 #' @keywords internal
 #'
-#' @examples
+#'
 get_var_heights <- function(all_vars, regex, site) {
   if (!exists("amf_var_heights_")) {amf_var_heights_ <- amf_var_heights()}
   stopifnot(site %in% amf_var_heights_$Site_ID)

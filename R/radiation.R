@@ -15,7 +15,7 @@
 #' @return Rn, Net isothermal radiation (W/m2)
 #' @keywords internal
 #'
-#' @examples
+#' 
 net_isothermal_radiation <- function(SW_abs, LW_abs_dn, Ta, a_lw) {
   sb <- eb_constants_$sb
   # Multiply by 2 because both sides of the leaf radiate heat.
@@ -33,7 +33,7 @@ net_isothermal_radiation <- function(SW_abs, LW_abs_dn, Ta, a_lw) {
 #' @return Rnet, net radiation (W/m2)
 #' @keywords internal
 #'
-#' @examples
+#' 
 net_nonisothermal_radiation <- function(SW_abs, LW_abs_dn, Tl, a_lw=0.98) {
   SW_abs + LW_abs_dn - outgoing_longwave_radiation(Tl, ef=a_lw)
 }
@@ -57,7 +57,7 @@ net_nonisothermal_radiation <- function(SW_abs, LW_abs_dn, Tl, a_lw=0.98) {
 #' shaded leaves (W/m2)
 #' @keywords internal
 #'
-#' @examples
+#' 
 absorbed_shortwave_radiation <- function(SW_beam, SW_dif, l,
                                          kb_real, kd_real, kb, kd=0.8,
                                          s=0.5, rho_b=0.1, rho_d=0.1, 
@@ -103,7 +103,7 @@ absorbed_shortwave_radiation <- function(SW_beam, SW_dif, l,
 #' shaded leaves (W/m2)
 #' @keywords internal
 #'
-#' @examples
+#' 
 absorbed_longwave_radiation <- function(Ta, l, L,
                                         kb, ea, ef=0.95, es=0.9,
                                         kd=0.8, aslist=FALSE) {
@@ -165,7 +165,7 @@ absorbed_longwave_radiation <- function(Ta, l, L,
 #' @return L_dn, downwelling longwave radiation
 #' @keywords internal
 #'
-#' @examples
+#' 
 absorbed_downwelling_longwave_radiation <- function(Ta, l, L,
                                            kb, ea, ef=0.95, es=0.9,
                                            kd=0.8, aslist=FALSE) {
@@ -201,7 +201,7 @@ absorbed_downwelling_longwave_radiation <- function(Ta, l, L,
 #' @return L_up, upwelling longwave radiation
 #' @keywords internal
 #'
-#' @examples
+#' 
 outgoing_longwave_radiation <- function(Tl, ef=0.95) {
   2 * ef * eb_constants_$sb * Tl^4
 }
