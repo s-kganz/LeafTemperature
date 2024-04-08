@@ -9,7 +9,7 @@
 #' @param cp Heat capacity of dry air
 #'
 #' @return gR, leaf conductance to radiative heat transfer (m/sec)
-#' @export
+#' @keywords internal
 #'
 #' @examples
 conductance_radiative_heat <- function(Ta, Pa, rho, rho_mol, 
@@ -27,7 +27,7 @@ conductance_radiative_heat <- function(Ta, Pa, rho, rho_mol,
 #' @param rho_mol Molar air density (mol / m^3)
 #'
 #' @return gbH, conductance to sensible heat transfer (m/sec)
-#' @export
+#' @keywords internal
 #'
 #' @examples
 conductance_boundary_heat_needleleaf <- function(u, d, rho_mol) {
@@ -42,7 +42,7 @@ conductance_boundary_heat_needleleaf <- function(u, d, rho_mol) {
 #' @param rho_mol Molar air density (mol / m^3)
 #'
 #' @return gbH, conductance to sensible heat transfer (m/sec)
-#' @export
+#' @keywords internal
 #'
 #' @examples
 conductance_boundary_heat_broadleaf <- function(u, d, rho_mol) {
@@ -62,7 +62,7 @@ conductance_boundary_heat_broadleaf <- function(u, d, rho_mol) {
 #' @param a_lw Longwave absorptance 
 #'
 #' @return omega, decoupling coefficient.
-#' @export
+#' @keywords internal
 #'
 #' @examples
 decoupling_coefficient <- function(gR, gbH, gs, d_esat, gamma, a_lw = 0.98) {
@@ -81,7 +81,7 @@ decoupling_coefficient <- function(gR, gbH, gs, d_esat, gamma, a_lw = 0.98) {
 #' @param gbH Leaf boundary layer conductance to heat transfer (mol / m2 sec) 
 #'
 #' @return LE_eq, equilibrium latent heat flux (W / m2)
-#' @export
+#' @keywords internal
 #'
 #' @examples
 latent_heat_equilibrium <- function(Rn, d_esat, gamma, gR, gbH) {
@@ -96,7 +96,7 @@ latent_heat_equilibrium <- function(Rn, d_esat, gamma, gR, gbH) {
 #' @param gbH Boundary layer heat conductance (mol / m2 sec) 
 #'
 #' @return gtot, total conductance (mol / m2 sec)
-#' @export
+#' @keywords internal
 #'
 #' @examples
 total_conductance <- function(gs, gbH) {
@@ -112,7 +112,7 @@ total_conductance <- function(gs, gbH) {
 #' @param l Heat of vaporization of water (J / mol)
 #'
 #' @return LE_imp, stomatally-imposed latent heat flux.
-#' @export
+#' @keywords internal
 #'
 #' @examples
 latent_heat_imposed <- function(gtot, vpd, Pa, l=eb_constants_$l) {
@@ -127,7 +127,7 @@ latent_heat_imposed <- function(gtot, vpd, Pa, l=eb_constants_$l) {
 #' @param le_imp Stomatally-imposed endpoint (W/m2)
 #'
 #' @return le, total latent heat flux (W/m2)
-#' @export
+#' @keywords internal
 #'
 #' @examples
 latent_heat <- function(omega, le_eq, le_imp) {
@@ -142,7 +142,7 @@ latent_heat <- function(omega, le_eq, le_imp) {
 #' @param Ta Air temperature (K)
 #'
 #' @return H, sensible heat flux (W/m2)
-#' @export
+#' @keywords internal
 #'
 #' @examples
 sensible_heat <- function(gbH, Tl, Ta) {
@@ -158,7 +158,7 @@ sensible_heat <- function(gbH, Tl, Ta) {
 #' @param g0 Intercept parameter (mol / m^2 s, usually set to 0)
 #'
 #' @return
-#' @export
+#' @keywords internal
 #'
 #' @examples
 medlyn_gs <- function(A, VPD, CO2, g1, g0=0) {

@@ -18,7 +18,7 @@
 #' @param run_no_transp Should the model be run a second time with gs = 0.001? This is necessary to calculate temperature forcings from the fluxes. If TRUE, additional outputs are returned.
 #'
 #' @return
-#' @export
+#' @keywords internal
 #'
 #' @examples
 energy_balance_error <- function(Tl, Ta, u, gs, Pa, RH, 

@@ -7,7 +7,7 @@
 #' @param M Molar mass of dry air (kg / mol)
 #'
 #' @return rho, air density (kg / m3)
-#' @export
+#' @keywords internal
 #'
 #' @examples
 dry_air_density <- function(Ta, Pa, 
@@ -27,7 +27,7 @@ dry_air_density <- function(Ta, Pa,
 #' @param M Molar mass of dry air (kg/mol)
 #'
 #' @return rho_mol, molar density of dry air (mol / m3)
-#' @export
+#' @keywords internal
 #'
 #' @examples
 dry_air_molar_density <- function(Ta, Pa,
@@ -46,8 +46,7 @@ dry_air_molar_density <- function(Ta, Pa,
 #' @param l Heat of vaporization of water (J / mol)
 #'
 #' @return gamma, Psycrometric constant (kPa / K)
-#' @export
-#'
+#' @keywords internal
 #' @examples
 psychrometric_constant <- function(Pa, 
                                    cp=eb_constants_$cp, 
@@ -65,7 +64,7 @@ psychrometric_constant <- function(Pa,
 #' @param Ta Air tempertaure (K)
 #'
 #' @return desat, Slope of esat w.r.t. air temperature (kPa / K)
-#' @export
+#' @keywords internal
 #'
 #' @examples
 esat_slope <- function(Ta) {
@@ -82,7 +81,7 @@ esat_slope <- function(Ta) {
 #' @param Ta Air temperature (K)
 #'
 #' @return esat, saturation vapor pressure (kPa)
-#' @export
+#' @keywords internal
 #'
 #' @examples
 saturation_vapor_pressure <- function(Ta) {
@@ -98,7 +97,7 @@ saturation_vapor_pressure <- function(Ta) {
 #' @param RH Relative humidity (%, 0-100)
 #'
 #' @return vpd, vapor pressure deficit (kPa)
-#' @export
+#' @keywords internal
 #'
 #' @examples
 vapor_pressure_deficit <- function(Ta, RH) {

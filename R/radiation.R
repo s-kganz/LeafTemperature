@@ -13,7 +13,7 @@
 #' @param a_lw Absorptivity of longwave radiation (0.98)
 #'
 #' @return Rn, Net isothermal radiation (W/m2)
-#' @export
+#' @keywords internal
 #'
 #' @examples
 net_isothermal_radiation <- function(SW_abs, LW_abs_dn, Ta, a_lw) {
@@ -31,7 +31,7 @@ net_isothermal_radiation <- function(SW_abs, LW_abs_dn, Ta, a_lw) {
 #' @param a_lw Leaf absorptance to longwave radiation (0-1)
 #'
 #' @return Rnet, net radiation (W/m2)
-#' @export
+#' @keywords internal
 #'
 #' @examples
 net_nonisothermal_radiation <- function(SW_abs, LW_abs_dn, Tl, a_lw=0.98) {
@@ -55,7 +55,7 @@ net_nonisothermal_radiation <- function(SW_abs, LW_abs_dn, Tl, a_lw=0.98) {
 #'
 #' @return q_total, total absorbed shortwave radiation of sunlit and 
 #' shaded leaves (W/m2)
-#' @export
+#' @keywords internal
 #'
 #' @examples
 absorbed_shortwave_radiation <- function(SW_beam, SW_dif, l,
@@ -101,7 +101,7 @@ absorbed_shortwave_radiation <- function(SW_beam, SW_dif, l,
 #'
 #' @return q_total, total absorbed longwave radiation of sunlit and 
 #' shaded leaves (W/m2)
-#' @export
+#' @keywords internal
 #'
 #' @examples
 absorbed_longwave_radiation <- function(Ta, l, L,
@@ -163,7 +163,7 @@ absorbed_longwave_radiation <- function(Ta, l, L,
 #' @param kd Attenuation coefficient for black leaves under diffuse radiation
 #'
 #' @return L_dn, downwelling longwave radiation
-#' @export
+#' @keywords internal
 #'
 #' @examples
 absorbed_downwelling_longwave_radiation <- function(Ta, l, L,
@@ -199,7 +199,7 @@ absorbed_downwelling_longwave_radiation <- function(Ta, l, L,
 #' @param ef Effective foliage emissivity (0-1)
 #'
 #' @return L_up, upwelling longwave radiation
-#' @export
+#' @keywords internal
 #'
 #' @examples
 outgoing_longwave_radiation <- function(Tl, ef=0.95) {

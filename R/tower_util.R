@@ -64,10 +64,9 @@ interpolate_tower_data <- function(tower, vars, var_z, interp_z, name_prefix="")
 #' Return Ameriflux variable info (possibly from cache)
 #'
 #' @return
-#' @export
+#' @keywords internal
 #' @importFrom memoise memoise
 #' @importFrom amerifluxr amf_var_info
-#' @examples
 amf_var_heights <- function() {amerifluxr::amf_var_info()}
 
 #' Get variables matching a regex and their height of observation.
@@ -76,8 +75,8 @@ amf_var_heights <- function() {amerifluxr::amf_var_info()}
 #' @param regex Character string used to `grep` variables out of `all_vars`.
 #' @param site Site code used to filter results from `amf_var_info`.
 #'
-#' @return
-#' @export
+#' @return a list containing the regex'd varnames and their heights
+#' @keywords internal
 #'
 #' @examples
 get_var_heights <- function(all_vars, regex, site) {
