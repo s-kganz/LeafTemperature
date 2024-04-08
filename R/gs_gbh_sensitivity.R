@@ -60,8 +60,7 @@ energy_balance_conductance_driver <- function(Ta, gs, gbH, Pa, RH, SW_dn, LW_dn,
 
 gs_gbh_sensitivity <- function(outdir, 
                                gs_min=0.01, gs_max=0.5, gbH_min=0.75, gbH_max=5,
-                               Ta=293, Pa=100, RH=50, SW_dn=800,
-                               LW_dn=600, a_lw=0.98, a_sw=0.50) {
+                               Ta=293, Pa=100, RH=50, a_lw=0.98, a_sw=0.50) {
   # Set parameters ----
   gs_min <- 0.01
   gs_max <- 0.5
@@ -69,19 +68,23 @@ gs_gbh_sensitivity <- function(outdir,
   gbH_max <- 5
   gs_values <- seq(gs_min, gs_max, length.out=100)
   gbH_values <- seq(gbH_min, gbH_max, length.out=100)
+  # Generally shortwave is about 1/3 of the absorbed radiation load
+  # in the canopy top.
+  tot_rad <- c(800, 1000, 1200)
   
-  grid <- expand.grid(gs_values, gbH_values) %>%
+  grid <- expand.grid(gs_values, gbH_values, tot_rad) %>%
     rename(
       gs = Var1,
-      gbH = Var2
+      gbH = Var2,
+      tot_rad = Var3
     ) %>%
     # Set defaults
     mutate(
       Ta = 293, # K
       Pa = 100, # kPa
       RH = 50, # %
-      SW_dn = 800, # W m-2
-      LW_dn = 600, # W m-2
+      SW_dn = tot_rad * (1/3),
+      LW_dn = tot_rad * (2/3),
       a_lw = 0.98, # -
       a_sw = 0.50  # -
     )

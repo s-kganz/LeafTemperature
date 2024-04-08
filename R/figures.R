@@ -142,9 +142,9 @@ fig3_regression_slopes <- function(eb_regressions) {
       ticks.colour="black",
       frame.colour="black"
     )) +
-    labs(x=expression("T"[leaf]~"vs"~"T"[air]~"regression slope ("~degree*C*"/"*degree*C*")"),
+    labs(x=expression("T"[L]~"vs"~"T"[A]~"regression slope ("~degree*C*"/"*degree*C*")"),
          y=expression("Cumulative LAI (m"^2~"m"^-2*")"),
-         fill=expression("Proportion T"[leaf]~"<"~"T"[air]))
+         fill=expression("Proportion T"[L]~"<"~"T"[A]))
 }
 fig4_temp_forcing <- function(eb_result) {
   Rn_site_order <- eb_result %>%
@@ -167,26 +167,24 @@ fig4_temp_forcing <- function(eb_result) {
     theme(panel.grid.major.x = element_blank()) +
     labs(x="", y="Temperature forcing (K)", fill="")
 }
-fig5_gs_gbh_sensitivity <- function(eb_result, grid_eb, 
-                                    gs_min = 0.01, gs_max = 0.5, 
-                                    gbH_min = 0.75, gbH_max = 5) {
-  ggplot(NULL) +
-    geom_point(data=eb_result, mapping=aes(x=PS_LAYER_GS, y=EB_MODEL_gbH),
-               alpha=0.1) +
-    geom_contour(data=grid_eb, 
-                 mapping=aes(x=gs, y=gbH, z=dT),
-                 lwd=1.7, color="black") +
-    geom_contour(data=grid_eb, 
-                 mapping=aes(x=gs, y=gbH, z=dT, color=after_stat(level)),
-                 lwd=1.5) +
-    scale_color_divergent() +
-    geom_label_contour(data=grid_eb, mapping=aes(x=gs, y=gbH, z=dT),
-                       skip=0, label.placer=label_placer_fraction()) +
-    xlim(c(gs_min, gs_max)) + ylim(gbH_min, gbH_max) +
+fig5_gs_gbh_sensitivity <- function(grid_eb) {
+  ggplot(grid_eb) +
+    geom_contour_fill(mapping=aes(x=gs, y=gbH, z=dT),
+                      binwidth=0.1) +
+    # geom_contour(mapping=aes(x=gs, y=gbH, z=dT), color="black",
+    #              binwidth=0.25) +
+    scale_fill_divergent() +
+    # geom_label_contour(mapping=aes(x=gs, y=gbH, z=dT),
+    #                    skip=0, label.placer=label_placer_fraction()) +
+    facet_wrap(~ tot_rad,
+               labeller=label_bquote(LW[abs]*"+"*SW[abs]~"="~.(tot_rad)~"W m"^-2)) +
+    #xlim(c(gs_min, gs_max)) + ylim(gbH_min, gbH_max) +
+    scale_x_continuous(expand=c(0, 0)) +
+    scale_y_continuous(expand=c(0, 0)) +
     theme_bw() +
     labs(x=expression("Stomatal conductance"~"(mol m"^-2~"s"^-1*")"),
-         y=expression("Boundary layer heat conductance"~"(mol m"^-2~"s"^-1*")"),
-         color=expression(Delta*"T (K)"))
+         y=expression("Boundary layer conductance"~"(mol m"^-2~"s"^-1*")"),
+         fill=expression(Delta*"T (K)"))
 }
 fig6_shade_gpp <- function(shade_gpp) {
   # Shaded GPP calculation
@@ -397,9 +395,9 @@ write_all_figures <- function(site_meta, search_dir, out_dir, overwrite=FALSE) {
             width=8, height=3.5)
   
   safe_save(file.path(out_dir, "fig5_gs_gbh_sensitivity.png"),
-            fig5_gs_gbh_sensitivity(eb_result, grid_eb),
+            fig5_gs_gbh_sensitivity(grid_eb),
             allow_overwrite=overwrite,
-            width=8, height=6)
+            width=6.5, height=3)
   
   safe_save(file.path(out_dir, "fig6_shade_gpp.png"),
             fig6_shade_gpp(shade_gpp),
