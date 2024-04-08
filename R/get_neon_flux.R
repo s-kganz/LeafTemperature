@@ -6,9 +6,8 @@
 library(neonUtilities)
 library(tidyverse)
 library(foreach)
-#source("scripts/tower_util.R")
 
-get_neon_flux <- function(site_meta, token) {
+get_neon_flux <- function(site_meta, token, outdir) {
   flux_dpid <- "DP4.00200.001"
   
   # Determine site availability ----
@@ -34,42 +33,6 @@ get_neon_flux <- function(site_meta, token) {
     )
   
   # Download monthly flux data ----
-  
-  out <- tempdir()
-  
-  n_months <- 0
-  for (i in 1:nrow(product_avail)) {
-    this_site <- product_avail$siteCode[i]
-    this_months <- product_avail$getMonths[[i]]
-    n_months <- n_months + length(this_months)
-    
-    # cat("Now downloading", length(this_months), 
-    #     "months for site", this_site, "\n")
-    
-    vapply(this_months, function(m) {
-      cat("\t", m, "\n")
-      suppressWarnings(zipsByProduct(
-        dpID=flux_dpid,
-        site=this_site,
-        startdate=m,
-        enddate=m,
-        check.size=FALSE,
-        token=token,
-        savepath=out
-      ))
-      # Throw away return value to make vapply happy
-      return(0)
-    }, 0)
-  }
-  
-  # Stack tables ----
-  
-  fpath <- file.path(out, "filesToStack00200", fsep="\\")
-  
-  n_files <- length(list.files(fpath, pattern="*.zip"))
-  
-  stopifnot(n_files == n_months)
-  
   vars <- c(
     "timeBgn", "timeEnd",
     "data.fluxCo2.nsae.flux",
@@ -78,23 +41,45 @@ get_neon_flux <- function(site_meta, token) {
     "qfqm.fluxH2o.nsae.qfFinl"
   )
   
-  flux_stack <- stackEddy(fpath, var=vars)
-  
-  flux_clean <- flux_stack[product_avail$siteCode]
-  
-  # cat("# Observations per site:\n")
-  
-  flux_final <- foreach(site=names(flux_clean), data=flux_clean, 
-                        .combine=rbind) %do% 
-    {
-      data_clean <- data %>%
+  flux_final <- foreach(i = 1:nrow(product_avail), .combine=rbind) %do% {
+    
+    this_site <- product_avail$siteCode[i]
+    this_months <- product_avail$getMonths[[i]]
+    # Drop site-months before 2022 for reproducibility
+    before_2022 <- which(parse_number(str_split_i(this_months, "-", 1)) < 2022)
+    this_months <- this_months[before_2022]
+
+    cat("Now downloading", length(this_months),
+        "months for site", this_site, "\n")
+    
+    foreach(m=this_months, .combine=rbind) %do% {
+
+      suppressWarnings(zipsByProduct(
+        dpID=flux_dpid,
+        site=this_site,
+        startdate=m,
+        enddate=m,
+        check.size=FALSE,
+        token=token,
+        savepath=tempdir()
+      ))
+      
+      # Stack the table, select vars we care about
+      fpath <- file.path(tempdir(), "filesToStack00200")
+      flux_stack <- stackEddy(fpath, var=vars)
+      
+      flux_month <- flux_stack[[this_site]] %>%
         select(all_of(vars)) %>%
-        mutate(site=site)
+        mutate(site=this_site)
       
-      # cat("\t", site, "\t", sum(data_clean$qfqm.fluxCo2.nsae.qfFinl == 0), "\n")
+      # Delete detritus
+      unlink(fpath, recursive=TRUE)
+      stopifnot(!dir.exists(fpath))
       
-      return(data_clean)
+      return(flux_month)
     }
+  }
   
-  write_if_not_exist(flux_final, "data_out/cross_site_flux.csv")
+  write_if_not_exist(flux_final, file.path(outdir, "cross_site_flux.csv"))
 }
+
