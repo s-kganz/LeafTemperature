@@ -104,7 +104,7 @@ fig1_sensor_heights <- function(sensor_heights, site_meta, tower_color="grey50")
           axis.title.y = element_text(size=14))
 }
 fig2_model_one_to_one <- function(eb_rad_tcan_summary) {
-  ggplot(eb_rad_tcan_summary, aes(x=TCAN, y=EB_MODEL_Tl)) +
+  p <- ggplot(eb_rad_tcan_summary, aes(x=TCAN, y=EB_MODEL_Tl)) +
     geom_bin2d() +
     geom_abline(slope=1, intercept=0, color="black", linetype="dashed") +
     scale_fill_viridis_c(limits=c(0, 200), oob=scales::squish) +
@@ -113,7 +113,10 @@ fig2_model_one_to_one <- function(eb_rad_tcan_summary) {
     coord_equal() +
     labs(x=expression("Radiometer temperature ("*degree*"C)"),
          y=expression("Model temperature ("*degree*"C)"),
-         fill="Count")
+         fill="Count") +
+    theme(legend.direction = "horizontal")
+
+  lemon::reposition_legend(p, "center", panel=c("panel-3-2", "panel-3-3"))
 }
 fig3_regression_slopes <- function(eb_regressions) {
   eb_regressions %>%
