@@ -147,25 +147,45 @@ fig3_regression_slopes <- function(eb_regressions) {
          fill=expression("Proportion T"[L]~"<"~"T"[A]))
 }
 fig4_temp_forcing <- function(eb_result) {
-  Rn_site_order <- eb_result %>%
+  eb_result_summary <- eb_result %>%
     group_by(SITE_NEON) %>%
-    summarize(mean_dT_Rn = mean(EB_MODEL_dT_Rn)) %>%
-    arrange(desc(mean_dT_Rn)) %>%
-    pull(SITE_NEON)
+    mutate(
+      canopy_group = case_when(
+        LAYER_L == max(LAYER_L) ~ "Lower",
+        LAYER_L == 0 ~ "Upper",
+        .default="Middle"
+      ),
+      canopy_group = factor(canopy_group, levels=c("Lower", "Middle", "Upper"))
+    ) %>%
+    group_by(SITE_NEON, canopy_group) %>%
+    summarize(
+      Rn_forcing = mean(EB_MODEL_dT_Rn),
+      Rn_sd = sd(EB_MODEL_dT_Rn),
+      LE_forcing = -mean(EB_MODEL_dT_LE),
+      LE_sd = sd(EB_MODEL_dT_LE),
+      net = Rn_forcing + LE_forcing
+    )
   
-  eb_result %>%
-    select(SITE_NEON, EB_MODEL_dT_LE, EB_MODEL_dT_Rn) %>%
-    pivot_longer(-SITE_NEON) %>%
-    ggplot(aes(x=factor(SITE_NEON, levels=Rn_site_order), y=value, fill=name)) +
-    stat_summary(geom="bar", fun=mean, position="dodge") +
-    stat_summary(geom="errorbar", fun.data=function(x) mean_se(x, 2), position=position_dodge(width=0.9), width=0.3) +
+  p <- ggplot(eb_result_summary, aes(y=canopy_group)) +
+    geom_bar(aes(x=Rn_forcing, fill="Rn"), stat="identity") +
+    geom_bar(aes(x=LE_forcing, fill="LE"), stat="identity") +
+    geom_errorbar(aes(x=Rn_forcing, xmin=Rn_forcing-Rn_sd, 
+                      xmax=Rn_forcing+Rn_sd),
+                  width=0.3) +
+    geom_errorbar(aes(x=LE_forcing, xmin=LE_forcing-LE_sd, 
+                      xmax=LE_forcing+LE_sd),
+                  width=0.3) +
+    # geom_point(aes(x=net)) +
+    facet_wrap(~ SITE_NEON) +
     scale_fill_manual(
-      labels=c("Cooling from\ntranspiration", "Warming from\nnet radiation"),
+      labels=c("Transpiration", "Net radiation"),
       values=hcl(h=c(195, 15), l=65, c=100)
     ) +
     theme_bw() +
-    theme(panel.grid.major.x = element_blank()) +
-    labs(x="", y="Temperature forcing (K)", fill="")
+    labs(x="Temperature forcing (K)",
+         y="", fill="")
+  
+  lemon::reposition_legend(p, 'center', panel=c("panel-3-3"))
 }
 fig5_gs_gbh_sensitivity <- function(grid_eb) {
   ggplot(grid_eb) +
@@ -392,7 +412,7 @@ write_all_figures <- function(site_meta, search_dir, out_dir, overwrite=FALSE) {
   safe_save(file.path(out_dir, "fig4_temp_forcing.png"),
             fig4_temp_forcing(eb_result),
             allow_overwrite=overwrite,
-            width=8, height=3.5)
+            width=5, height=4.5)
   
   safe_save(file.path(out_dir, "fig5_gs_gbh_sensitivity.png"),
             fig5_gs_gbh_sensitivity(grid_eb),
