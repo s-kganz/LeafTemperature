@@ -15,7 +15,8 @@ run_analysis <- function(amf_user, amf_email, neon_token, work_dir, log=NULL,
   cat("Output directory:", work_dir, "\n")
   cat("AMF username:", amf_user, "\n")
   cat("AMF email:", amf_email, "\n")
-  cat("NEON token is", ifelse(is.null(neon_token), "Missing", "Provided"), "\n")
+  cat("NEON token is", ifelse(is.null(neon_token) | is.na(neon_token), 
+                              "Missing", "Provided"), "\n")
   
   # Set up directories
   if (!dir.exists(work_dir)) dir.create(work_dir)
@@ -34,19 +35,13 @@ run_analysis <- function(amf_user, amf_email, neon_token, work_dir, log=NULL,
   if (!skip[1]) get_amf_tower_data(site_meta, work_dir, amf_user, amf_email)
   else cat("Skipping", steps[1], "\n")
   
-  #TODO stack tables one at a time, rowbind results, then delete site-months
-  # once we are done with them.
-  # N.b. this takes about 1.5 hours and requires 60 GB of storage. Warn the 
-  # user before proceeding.
   if (!skip[2]) {
-    cat("Downloading flux takes ~90 minutes and requires 60 GB of storage. 
-        After processing, this is reduced to a 33 MB csv. 
-        Are you sure you want to continue?\n")
+    cat("Downloading flux takes ~90 minutes. Are you sure you want to continue?\n")
     cat("1: Continue and download flux\n")
-    cat("2: Skip and use \n")
+    cat("2: Abort \n")
     choice <- readline("Your choice: ")
     if (choice == 1) get_neon_flux(site_meta, neon_token, work_dir)
-    else cat("Skipping", steps[2], "\n")
+    else stop("Aborted at flux download")
   } 
   else cat("Skipping", steps[2], "\n")
   
@@ -58,13 +53,16 @@ run_analysis <- function(amf_user, amf_email, neon_token, work_dir, log=NULL,
   else cat("Skipping", steps[4], "\n")
   
   # Partition flux
-  raw_flux <- read_csv(file.path(work_dir, "cross_site_flux.csv"))
-  if (!skip[5]) partition_neon_flux(site_meta, raw_flux, work_dir)
+  raw_flux <- read_csv(file.path(work_dir, "cross_site_flux.csv"),
+                       show_col_types=FALSE)
+  if (!skip[5]) partition_neon_flux(site_meta, raw_flux, tower_dir, work_dir)
   else cat("Skipping", steps[5], "\n")
   
   # Within-canopy meteorology
-  partition_flux <- read_csv(file.path(work_dir, "cross_site_flux_partition_qc.csv"))
-  lad_profiles <- read_csv(file.path(work_dir, "neon_lad_profiles.csv"))
+  partition_flux <- read_csv(file.path(work_dir, "cross_site_flux_partition_qc.csv"),
+                             show_col_types=FALSE)
+  lad_profiles <- read_csv(file.path(work_dir, "neon_lad_profiles.csv"),
+                           show_col_types=FALSE)
   if (!skip[6]) get_within_canopy_meteorology(site_meta, manual_lai, 
                                               lad_profiles, partition_flux,
                                               work_dir)
@@ -81,10 +79,14 @@ run_analysis <- function(amf_user, amf_email, neon_token, work_dir, log=NULL,
   else cat("Skipping", steps[8], "\n")
   
   # Run the EB model
-  aq_constants <- read_csv(file.path(work_dir, "cross_site_aq_constants.csv"))
-  lidar_constants <- read_csv(file.path(work_dir, "neon_lidar_constants.csv"))
-  medlyn_constants <- read_csv(file.path(work_dir, "cross_site_medlyn_coefficients.csv"))
-  interp_meteo <- read_csv(file.path(work_dir, "cross_site_interpolated_meteorology.csv"))
+  aq_constants <- read_csv(file.path(work_dir, "cross_site_aq_constants.csv"),
+                           show_col_types=FALSE)
+  lidar_constants <- read_csv(file.path(work_dir, "neon_lidar_constants.csv"),
+                              show_col_types=FALSE)
+  medlyn_constants <- read_csv(file.path(work_dir, "cross_site_medlyn_coefficients.csv"),
+                               show_col_types=FALSE)
+  interp_meteo <- read_csv(file.path(work_dir, "cross_site_interpolated_meteorology.csv"),
+                           show_col_types=FALSE)
   
   if (!skip[9])
     run_neon_energy_balance(
@@ -100,8 +102,10 @@ run_analysis <- function(amf_user, amf_email, neon_token, work_dir, log=NULL,
     )
   else cat("Skipping", steps[9], "\n")
   
-  eb_result <- read_csv(file.path(model_dir, "cross_site_eb.csv"))
-  rad_tcan <- read_csv(file.path(work_dir, "cross_site_tcan.csv"))
+  eb_result <- read_csv(file.path(model_dir, "cross_site_eb.csv"),
+                        show_col_types=FALSE)
+  rad_tcan <- read_csv(file.path(work_dir, "cross_site_tcan.csv"),
+                       show_col_types=FALSE)
   if (!skip[10]) model_radiometer_comparison(eb_result, rad_tcan, model_dir)
   else cat("Skipping", steps[10], "\n")
   
