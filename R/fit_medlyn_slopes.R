@@ -1,11 +1,6 @@
 # This file calculates canopy-scale g1 for the Medlyn stomatal conductance
 # model.
 
-library(tidyverse)
-library(bigleaf)
-library(RcppRoll)
-library(robustbase)
-
 do_medlyn_fit <- function(tower, d, site, roughness_d, roughness_z0m, zr, zh) {
   # Filtering ----
   # See p. 697 in Knauer et al. (2018)
@@ -20,7 +15,7 @@ do_medlyn_fit <- function(tower, d, site, roughness_d, roughness_z0m, zr, zh) {
   tower_gs <- tower_filter %>%
     bind_cols(
       # Calculate Ga_h and Gb_h
-      aerodynamic.conductance(
+      bigleaf::aerodynamic.conductance(
         .,
         .$TA,
         .$PA,
@@ -51,7 +46,7 @@ do_medlyn_fit <- function(tower, d, site, roughness_d, roughness_z0m, zr, zh) {
     ) %>%
     bind_cols(
       # Finally, calculate surface conductance!
-      surface.conductance(
+      bigleaf::surface.conductance(
         .,
         Tair = .$TA,
         pressure = .$PA,
@@ -89,7 +84,7 @@ do_medlyn_fit <- function(tower, d, site, roughness_d, roughness_z0m, zr, zh) {
   # fit_v2 <- theil_sen_regression(Gs_mol ~ GPP_U50_f / (sqrt(VPD) * CO2), data=tower_gs)
   
   # V3: robustbase. This is the method used in Knauer et al. (2018) 
-  fit_v3 <- nlrob(
+  fit_v3 <- robustbase::nlrob(
     Gs_mol ~ (1 + g1 / sqrt(VPD)) * (GPP_uStar_f / CO2),
     data=tower_gs,
     algorithm="port",
@@ -157,7 +152,7 @@ neon_fit_medlyn <- function(site, tower, flux, zr, zh, L, rain_filter=3) {
     mutate(date = as.Date(TIMESTAMP)) %>%
     group_by(date) %>%
     summarize(P = sum(P, na.rm = TRUE)) %>%
-    mutate(P_roll_sum = roll_sumr(P, n = rain_filter+1)) %>%
+    mutate(P_roll_sum = RcppRoll::roll_sumr(P, n = rain_filter+1)) %>%
     filter(P_roll_sum == 0)
   
   tower_transp_only <- tower_select %>%
@@ -168,7 +163,7 @@ neon_fit_medlyn <- function(site, tower, flux, zr, zh, L, rain_filter=3) {
   cat("...after T/ET filtering", nrow(tower_transp_only), "\n")
   
   # Calculate roughness parameters ----
-  roughness <- roughness.parameters(
+  roughness <- bigleaf::roughness.parameters(
     method = "wind_profile",
     zh = zh,
     zr = zr,
@@ -260,7 +255,7 @@ old_wref_fit_driver <- function() {
     mutate(date = as.Date(TIMESTAMP)) %>%
     group_by(date) %>%
     summarize(P = sum(P, na.rm = TRUE)) %>%
-    mutate(P_roll_sum = roll_sumr(P, n = RAIN_FILTER+1)) %>%
+    mutate(P_roll_sum = RcppRoll::roll_sumr(P, n = RAIN_FILTER+1)) %>%
     filter(P_roll_sum == 0)
   
   wref_transp_only <- wref_tower %>%
@@ -279,7 +274,7 @@ old_wref_fit_driver <- function() {
     )
   
   # Calculate roughness parameters
-  wref_roughness <- roughness.parameters(
+  wref_roughness <- bigleaf::roughness.parameters(
     method = "wind_profile",
     zh = wref_zh,
     zr = wref_zr,

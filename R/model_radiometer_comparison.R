@@ -4,9 +4,6 @@
 # Make 1:1 plots of radiometer T vs. model leaf T. One per site in main text,
 # then upper/lower canopy in supplemental?
 
-library(tidyverse)
-library(amerifluxr)
-
 model_radiometer_comparison <- function(eb_result, rad_tcan, outdir) {
   
   ## Collect heights for model/radiometers ----

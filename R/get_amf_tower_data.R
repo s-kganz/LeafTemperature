@@ -1,13 +1,11 @@
 # Download tower micrometeorology data from Ameriflux. Also, collect all of
 # the radiometer canopy temperature data in one table.
-library(tidyverse)
-library(amerifluxr)
 
 get_amf_tower_data <- function(site_meta, outdir, user, email) {
   if (!dir.exists(outdir)) dir.create(outdir)
   dir.create(file.path(outdir, "amf_tower_data"))
   
-  flux_files <- amf_download_base(
+  flux_files <- amerifluxr::amf_download_base(
     user,
     email,
     site=site_meta$site_ameriflux,
@@ -28,7 +26,7 @@ get_amf_tower_data <- function(site_meta, outdir, user, email) {
     
     cat(f, "\n", this_site, this_i, this_utc, "\n")
     
-    this_f <- amf_read_base(
+    this_f <- amerifluxr::amf_read_base(
       file = f,
       unzip = TRUE,
       parse_timestamp = TRUE

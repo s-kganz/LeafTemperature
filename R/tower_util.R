@@ -1,6 +1,3 @@
-library(tidyverse)
-library(amerifluxr)
-
 #' Interpolate flux tower micrometeorology data at arbitrary z positions.
 #'
 #' @param tower Data frame containing relevant tower observations.
@@ -116,7 +113,6 @@ if (sys.nframe() == 0) {
   patterns <- c("TA_\\d_\\d_\\d", "WS_\\d_\\d_\\d", "CO2_.*\\d_\\d_\\d",
                 "H2O_.*\\d_\\d_\\d")
   prefixes <- c("TA", "WS", "CO2", "H2O")
-  library(foreach)
   interp_data <- foreach(pattern=patterns, prefix=prefixes, .combine=cbind) %do% {
     vars_heights <- get_var_heights(names(a_tower), pattern, "US-xWR")
     vars <- vars_heights$vars

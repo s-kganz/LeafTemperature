@@ -3,9 +3,6 @@
 # flux reaching the slice. But, PS saturates beyond a certain point. Estimate
 # this threshold at each site by comparing TOC flux with whole-canopy A.
 
-library(tidyverse)
-library(photosynthesis)
-
 fit_aq_curves <- function(site_meta, site_flux_qc, tower_dir, outdir) {
   
   tower_files <- list.files(tower_dir, pattern="*.csv",
@@ -53,7 +50,7 @@ fit_aq_curves <- function(site_meta, site_flux_qc, tower_dir, outdir) {
       function(.data) {
         minpack.lm::nlsLM(
           data = .data, 
-          .A ~ marshall_biscoe_1980(Q_abs = .data[[".Qabs"]], k_sat, phi_J, theta_J) - Rd,
+          .A ~ photosynthesis::marshall_biscoe_1980(Q_abs = .data[[".Qabs"]], k_sat, phi_J, theta_J) - Rd,
           # Attempt to estimate starting parameters
           start = photosynthesis:::get_init_aq_response(.data),
           # Set lower limits
@@ -61,14 +58,14 @@ fit_aq_curves <- function(site_meta, site_flux_qc, tower_dir, outdir) {
           # set upper limits
           upper = c(2 * max(.data[[".A"]]), 0.5, 0.99, 5),
           # set max iterations for curve fitting
-          control = nls.lm.control(maxiter = 100)
+          control = minpack.lm::nls.lm.control(maxiter = 100)
         )
       }
     ) %>%
     map(coef) %>%
     map(t) %>%
     map(as.data.frame) %>%
-    imap_dfr(~ mutate(.x, site = .y))
+    purrr::imap_dfr(~ mutate(.x, site = .y))
   
   # Save model coefficients and fit ----
   write_if_not_exist(

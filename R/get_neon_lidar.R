@@ -1,12 +1,8 @@
-library(neonUtilities)
-library(lidR)
-library(terra)
-
 get_neon_lidar <- function(site_meta, outdir) {
   if (!dir.exists(outdir)) dir.create(outdir)
 
   product <- "DP1.30003.001"
-  lidar_avail <- getProductInfo(product)
+  lidar_avail <- neonUtilities::getProductInfo(product)
   
   buffer_radius <- 50 # m
 
@@ -26,9 +22,9 @@ get_neon_lidar <- function(site_meta, outdir) {
     # Convert lat lon to UTM
     utm_proj4 <- paste("+proj=utm ", "+zone=", utm, " +datum=NAD83 ", "+units=m",
                        sep="")
-    utm_coord <- project(
+    utm_coord <- terra::project(
       matrix(c(lon, lat), nrow=1), 
-      from=crs("epsg:4326"), to=crs(utm_proj4)
+      from=terra::crs("epsg:4326"), to=terra::crs(utm_proj4)
     )
     
     utm_x <- utm_coord[1, 1]
@@ -37,7 +33,7 @@ get_neon_lidar <- function(site_meta, outdir) {
     # Download files to a tempdir
     tdir <- tempdir()
     
-    byTileAOP(
+    neonUtilities::byTileAOP(
       product,
       site_id,
       acq_year,
@@ -50,21 +46,21 @@ get_neon_lidar <- function(site_meta, outdir) {
     
     # Make a las catalog from the files
     # print("Reading downloaded LAS files...")
-    lascat <- readLAScatalog(
+    lascat <- lidR::readLAScatalog(
       list.files(file.path(tdir, product), pattern="*.laz", recursive=TRUE,
                  full.names=TRUE)
     )
     
     # Clip to points near the tower
     # print("Clipping LAS catalog...")
-    lasclip <- clip_circle(lascat, utm_coord[1, 1], utm_coord[1, 2], buffer_radius)
+    lasclip <- lidR::clip_circle(lascat, utm_coord[1, 1], utm_coord[1, 2], buffer_radius)
     
     # print("Normalizing height...")
     # Normalize using the ground points already in the cloud
-    lasnorm <- normalize_height(lasclip, knnidw())
+    lasnorm <- lidR::normalize_height(lasclip, knnidw())
     
     #print("Saving processed LAZ...")
-    writeLAS(lasnorm, file.path(outdir, paste0(site_id, ".laz")))
+    lidR::writeLAS(lasnorm, file.path(outdir, paste0(site_id, ".laz")))
     
     # Delete files in the temporary directory
     #print("Deleting old files...")

@@ -1,10 +1,5 @@
 # This script runs the final energy balance model.
 
-library(tidyverse)
-library(suncalc)
-library(photosynthesis)
-library(lmodel2)
-
 run_neon_energy_balance <- function(site_meta, site_lai, site_flux_qc, 
                                     aq_constants, medlyn_constants, 
                                     lidar_constants, interp_meteo, tower_dir, 
@@ -137,7 +132,7 @@ run_neon_energy_balance <- function(site_meta, site_lai, site_flux_qc,
   # Calculate solar position and black-leaf radiation constants ----
   flux_solar <- flux_rad %>%
     bind_cols(
-      getSunlightPosition(
+      suncalc::getSunlightPosition(
         data = data.frame(
           date=.$TIMESTAMP,
           lat=.$TOWER_LAT,
@@ -217,7 +212,7 @@ run_neon_energy_balance <- function(site_meta, site_lai, site_flux_qc,
   flux_ps_weight <- flux_rad_model %>%
     # Calculate layer contribution to GPP
     mutate(
-      PS_LAYER_GPP_WEIGHT = marshall_biscoe_1980(
+      PS_LAYER_GPP_WEIGHT = photosynthesis::marshall_biscoe_1980(
         RAD_SW_ABS, AQ_k_sat, AQ_phi_J, AQ_theta_J
       )
     ) %>%
@@ -250,7 +245,7 @@ run_neon_energy_balance <- function(site_meta, site_lai, site_flux_qc,
   # Run energy balance models ----
   flux_eb_result <- flux_ps_model %>%
     mutate(
-      EB_MODEL = pmap(
+      EB_MODEL = purrr::pmap(
         list(LAYER_TA+273.15, LAYER_WS, PS_LAYER_GS, RAD_TOC_PA, LAYER_RH,
              RAD_SW_ABS, RAD_LW_ABS),
         energy_balance_driver,
@@ -274,7 +269,7 @@ run_neon_energy_balance <- function(site_meta, site_lai, site_flux_qc,
   # by an order of magnitude.
   flux_eb_result_bigleaf <- flux_ps_model %>%
     mutate(
-      EB_MODEL = pmap(
+      EB_MODEL = purrr::pmap(
         list(LAYER_TA+273.15, LAYER_WS, PS_LAYER_GS, RAD_TOC_PA, LAYER_RH,
              RAD_SW_ABS, RAD_LW_ABS),
         energy_balance_driver,
@@ -298,7 +293,7 @@ run_neon_energy_balance <- function(site_meta, site_lai, site_flux_qc,
   
   flux_eb_result_wref_g1_sensitivity <- flux_wref_g1_sensitivity %>%
     mutate(
-      EB_MODEL = pmap(
+      EB_MODEL = purrr::pmap(
         list(LAYER_TA+273.15, LAYER_WS, PS_LAYER_GS, RAD_TOC_PA, LAYER_RH,
              RAD_SW_ABS, RAD_LW_ABS),
         energy_balance_driver,
@@ -323,7 +318,7 @@ run_neon_energy_balance <- function(site_meta, site_lai, site_flux_qc,
       slope_lm = map(
         data,
         function(data) {
-          lmodel2(EB_MODEL_Tl ~ LAYER_TA, data=data)
+          lmodel2::lmodel2(EB_MODEL_Tl ~ LAYER_TA, data=data)
         }
       ),
       slope_p025 = map_dbl(slope_lm, function(m) m$confidence.intervals[3, 4]),
@@ -347,7 +342,7 @@ run_neon_energy_balance <- function(site_meta, site_lai, site_flux_qc,
       slope_lm = map(
         data,
         function(data) {
-          lmodel2(EB_MODEL_Tl ~ LAYER_TA, data=data)
+          lmodel2::lmodel2(EB_MODEL_Tl ~ LAYER_TA, data=data)
         }
       ),
       slope_p025 = map_dbl(slope_lm, function(m) m$confidence.intervals[3, 4]),

@@ -1,10 +1,6 @@
 # This file looks at the relationship between gs, gbh, and the leaf-air 
 # temperature difference.
 
-library(tidyverse)
-library(colorspace)
-library(metR)
-
 
 # Driver functions ----
 # Have to write separate EB function to manipulate conductances directly.
@@ -47,7 +43,7 @@ energy_balance_conductance_error <- function(Tl, Ta, gs, gbH, Pa, RH,
 
 energy_balance_conductance_driver <- function(Ta, gs, gbH, Pa, RH, SW_dn, LW_dn,
                                               a_lw=0.98, a_sw=0.50, bounds=20) {
-  optim_result <- optimize(
+  optim_result <- stats::optimize(
     energy_balance_conductance_error,
     c(Ta-bounds, Ta+bounds),
     Ta, gs, gbH, Pa, RH, SW_dn, LW_dn,
@@ -92,9 +88,9 @@ gs_gbh_sensitivity <- function(outdir,
   # Run energy balance ----
   grid_eb <- grid %>%
     mutate(
-      Tl = pmap_dbl(list(Ta, gs, gbH, Pa, RH, SW_dn, LW_dn),
-                    energy_balance_conductance_driver,
-                    .progress="EB conductance sensitivity"),
+      Tl = purrr::pmap_dbl(list(Ta, gs, gbH, Pa, RH, SW_dn, LW_dn),
+                           energy_balance_conductance_driver,
+                           .progress="EB conductance sensitivity"),
       dT = Tl - Ta
     )
   

@@ -9,9 +9,6 @@
 # Note that this step is quite data-intensive, so we filter each tower dataset
 # to timestamps that have valid fluxes.
 
-library(tidyverse)
-library(foreach)
-
 # Read data ----
 # Site LAI & metadata
 
@@ -48,8 +45,8 @@ neon_interpolation_driver <- function(site_amf, site_neon, site_lad, tower, l) {
            site_amf = site_amf,
            site_neon = site_neon) %>%
     pivot_longer(-c(TIMESTAMP, site_amf, site_neon)) %>%
-    mutate(varname = str_split_i(name, "_", 1),
-           z = str_split_i(name, "_", 2),
+    mutate(varname = stringr::str_split_i(name, "_", 1),
+           z = stringr::str_split_i(name, "_", 2),
            layer_l = l[match(z, interp_z)]) %>%
     select(TIMESTAMP, site_amf, site_neon, layer_l, z, varname, value) %>%
     pivot_wider(names_from=varname, values_from=value)
@@ -115,8 +112,8 @@ do_old_wref_interpolation <- function() {
   wref_interp <- cbind(interp_ta, interp_rh) %>%
     mutate(TIMESTAMP=wref_flux$TIMESTAMP) %>%
     pivot_longer(-c(TIMESTAMP)) %>%
-    mutate(varname = str_split_i(name, "_", 1),
-           z = str_split_i(name, "_", 2),
+    mutate(varname = stringr::str_split_i(name, "_", 1),
+           z = stringr::str_split_i(name, "_", 2),
            layer_l = interp_l[match(z, interp_z)]) %>%
     select(TIMESTAMP, layer_l, z, varname, value) %>%
     pivot_wider(names_from=varname, values_from=value)

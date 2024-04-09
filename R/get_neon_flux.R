@@ -3,17 +3,13 @@
 # getting data through the OneFlux pipeline, so we cannot generate a gap-filled
 # dataset. However, we can pull the non gap-filled observations from NEON.
 
-library(neonUtilities)
-library(tidyverse)
-library(foreach)
-
 get_neon_flux <- function(site_meta, token, outdir) {
   flux_dpid <- "DP4.00200.001"
   
   # Determine site availability ----
   # We only use data in the non-provisional state since this means we can assume 
   # it has been QC'd for us.
-  product_info <- getProductInfo(
+  product_info <- neonUtilities::getProductInfo(
     flux_dpid, token
   )
   
@@ -54,7 +50,7 @@ get_neon_flux <- function(site_meta, token, outdir) {
     
     foreach(m=this_months, .combine=rbind) %do% {
 
-      suppressWarnings(zipsByProduct(
+      suppressWarnings(neonUtilities::zipsByProduct(
         dpID=flux_dpid,
         site=this_site,
         startdate=m,
@@ -66,7 +62,7 @@ get_neon_flux <- function(site_meta, token, outdir) {
       
       # Stack the table, select vars we care about
       fpath <- file.path(tempdir(), "filesToStack00200")
-      flux_stack <- stackEddy(fpath, var=vars)
+      flux_stack <- neonUtilities::stackEddy(fpath, var=vars)
       
       flux_month <- flux_stack[[this_site]] %>%
         select(all_of(vars)) %>%

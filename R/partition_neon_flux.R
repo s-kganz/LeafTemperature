@@ -1,10 +1,7 @@
-library(tidyverse)
-library(REddyProc)
-
 run_reddy_proc <- function(site, lat, lon, table, ...) {
-  table <- filterLongRuns(table, "NEE")
+  table <- REddyProc::filterLongRuns(table, "NEE")
   
-  EProc <- sEddyProc$new(
+  EProc <- REddyProc::sEddyProc$new(
     site, table, c('NEE','Rg','Tair','VPD', 'Ustar'),
     ...
   )
@@ -68,23 +65,22 @@ process_site_year <- function(site, lat, lon, flux, tower) {
   run_reddy_proc(site, lat, lon, flux_tower)
 }
 
-get_tower_data <- function(site, year) {
-  data_dir <- "data_working/neon_flux"
-  file <- file.path(data_dir, str_c(site, ".csv"))
+get_tower_data <- function(site, year, tower_dir) {
+  file <- file.path(tower_dir, str_c(site, ".csv"))
   
   read_csv(file, col_types=cols()) %>%
-    filter(year(TIMESTAMP) == year) %>%
+    filter(lubridate::year(TIMESTAMP) == year) %>%
     select(TIMESTAMP, SW_IN_1_1_1, TA_1_1_1, RH, USTAR) %>%
     mutate(site=site) %>%
     return()
 }
 
-partition_neon_flux <- function(site_meta, raw_flux, outdir) {
+partition_neon_flux <- function(site_meta, raw_flux, tower_dir, out_dir) {
   grouped_flux <- raw_flux %>%
     # N.b. can't drop any rows here otherwise REddyProc complains about non-
     # equidistant time steps
     select(-timeEnd) %>%
-    mutate(year = year(timeBgn)) %>%
+    mutate(year = lubridate::year(timeBgn)) %>%
     group_by(site, year) %>%
     group_split()
   
@@ -98,7 +94,7 @@ partition_neon_flux <- function(site_meta, raw_flux, outdir) {
     cat("Now processing", site_neon, year, "\n")
     
     timediff <- max(flux$timeBgn) - min(flux$timeBgn)
-    if (timediff < days(90)) {
+    if (timediff < lubridate::days(90)) {
       cat("Fewer than 90 days of data, returning NA for this site-year.\n")
       return(NA)
     }
@@ -118,7 +114,7 @@ partition_neon_flux <- function(site_meta, raw_flux, outdir) {
     site_lon <- site_meta$tower_lon[meta_idx]
     
     # Pull tower data
-    tower <- get_tower_data(site_amf, year)
+    tower <- get_tower_data(site_amf, year, tower_dir)
     
     # Pass to REddyProc pipeline and cbind with original data
     suppressWarnings(process_site_year(site_amf, site_lat, site_lon, flux, tower)) %>%
@@ -150,7 +146,7 @@ partition_neon_flux <- function(site_meta, raw_flux, outdir) {
   
   processed_flux_df_qc %>%
     select(-year) %>%
-    write_if_not_exist(file.path(outdir, "cross_site_flux_partition_qc.csv"))
+    write_if_not_exist(file.path(out_dir, "cross_site_flux_partition_qc.csv"))
 }
 
 process_old_wref_flux <- function() {

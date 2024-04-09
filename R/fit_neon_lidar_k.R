@@ -5,10 +5,6 @@
 # script calculates the attenuation coefficients and generates LAI-Z crosswalk
 # tables.
 
-library(lidR)
-library(tidyverse)
-library(amerifluxr)
-
 # For each PAR observation we need to know the following:
 # - What height was it measured at?
 # - What was the PPFD value for this observation?
@@ -26,16 +22,16 @@ fit_lidar_constants <- function(site, site_lai, tower_toc_rad, lidar_dir,
       pull(ppfd_z) %>% max() %>% ceiling()
   }
   
-  las <- readLAS(file.path(
+  las <- lidR::readLAS(file.path(
     lidar_dir, str_c(site, ".laz")
   )) %>%
-    filter_poi(Z > zmin, Z < zmax)
+    lidR::filter_poi(Z > zmin, Z < zmax)
   
   # Calibrate k so that the integral of LAD == LAI. 
-  lad_uncal_sum <- LAD(las$Z, k=1, z0 = zmin) %>% pull(lad) %>% sum(na.rm=TRUE)
+  lad_uncal_sum <- lidR::LAD(las$Z, k=1, z0 = zmin) %>% pull(lad) %>% sum(na.rm=TRUE)
   k_lai <- lad_uncal_sum / site_lai
   
-  lad_profile <- LAD(las$Z, k=k_lai, z0 = zmin)
+  lad_profile <- lidR::LAD(las$Z, k=k_lai, z0 = zmin)
   # Reverse the order of rows so we can compute the cumulative LAI looking 
   # *down* the canopy.
   lad_profile <- lad_profile[nrow(lad_profile):1, ]

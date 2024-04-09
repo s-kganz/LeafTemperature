@@ -1,7 +1,3 @@
-library(hemispheR)
-library(neonUtilities)
-library(tidyverse)
-
 make_curl_command <- function(url, outfile) {
   paste("curl", url, "-L --output", outfile)
 }
@@ -30,10 +26,10 @@ download_convert_dhp <- function(url, verbose=FALSE, ...) {
 calculate_binarized_lai <- function(dhp_bw, lens="Nikkor-10.5",
                                     display=FALSE, nrings=5, nseg=8, ...) {
   
-  dhp_gap <- gapfrac_fisheye(dhp_bw, lens="Nikkor-10.5", display=FALSE,
-                             nrings=5, nseg=8)
+  dhp_gap <- hemispheR::gapfrac_fisheye(dhp_bw, lens="Nikkor-10.5", 
+                                        display=FALSE, nrings=5, nseg=8)
   
-  dhp_lai <- canopy_fisheye(dhp_gap)
+  dhp_lai <- hemispheR::canopy_fisheye(dhp_gap)
   
   return(c(dhp_lai, ...))
 }
@@ -43,15 +39,15 @@ calculate_dhp_lai_auto <- function(url, verbose=FALSE, ...) {
   dhp_file <- download_convert_dhp(url, verbose=verbose)
   
   #if (verbose) {cat("Loading image...")}
-  dhp <- import_fisheye(dhp_file,
-                        circular=FALSE,
-                        display=FALSE,
-                        message=FALSE)
+  dhp <- hemispheR::import_fisheye(dhp_file,
+                                   circular=FALSE,
+                                   display=FALSE,
+                                   message=FALSE)
   
   #if (verbose) {cat("Binarizing...")}
-  dhp_bw <- binarize_fisheye(dhp, method="Otsu",
-                             zonal=FALSE, manual=NULL,
-                             display=FALSE)
+  dhp_bw <- hemispheR::binarize_fisheye(dhp, method="Otsu",
+                                        zonal=FALSE, manual=NULL,
+                                        display=FALSE)
   
   
   result <- calculate_binarized_lai(dhp_bw, ...)
@@ -64,19 +60,19 @@ calculate_dhp_lai_auto <- function(url, verbose=FALSE, ...) {
 calculate_dhp_lai_manual <- function(url, verbose=FALSE, ...) {
   dhp_file <- download_convert_dhp(url, verbose=verbose)
   
-  dhp <- import_fisheye(dhp_file,
-                        circular=FALSE,
-                        display=FALSE,
-                        message=FALSE)
+  dhp <- hemispheR::import_fisheye(dhp_file,
+                                   circular=FALSE,
+                                   display=FALSE,
+                                   message=FALSE)
   
   thresh <- as.numeric(autothresholdr::auto_thresh(
     round(as.matrix(dhp)), method="Otsu"
   ))
-  dhp_bw <- binarize_fisheye(dhp, manual=thresh, display=FALSE)
+  dhp_bw <- hemispheR::binarize_fisheye(dhp, manual=thresh, display=FALSE)
   par(mfrow=c(1, 2))
   while (TRUE) {
     cat("Current thresh:", thresh, "\n")
-    dhp_bw <- binarize_fisheye(dhp, manual=thresh, display=FALSE)
+    dhp_bw <- hemispheR::binarize_fisheye(dhp, manual=thresh, display=FALSE)
     
     plot(dhp, col=grey.colors(50), main="Original")
     plot(dhp_bw, col=grey.colors(2), main="Thresholded")
@@ -106,7 +102,7 @@ manual_dhp_lai_driver <- function(site_meta, outdir, token) {
   
   sites <- site_meta %>% pull(site_neon)
   
-  dhp_product <- loadByProduct(
+  dhp_product <- neonUtilities::loadByProduct(
     "DP1.10017.001",
     site=sites,
     token=token,
