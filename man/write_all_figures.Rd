@@ -16,7 +16,7 @@ write_all_figures(site_meta, search_dir, out_dir, overwrite = FALSE)
 \item{overwrite}{If a figure already exists, should it be overwritten?}
 }
 \value{
-Void
+Void, but all the figures get written to \code{out_dir}.
 }
 \description{
 Write all manuscript figures to a directory

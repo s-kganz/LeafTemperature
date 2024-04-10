@@ -1,3 +1,34 @@
+#' Re-run leaf temperature modeling pipeline
+#'
+#' @param amf_user Ameriflux username for data download
+#' @param amf_email Ameriflux email for data download
+#' @param neon_token Token for NEON API. Can be NA, but this will makes your downloads take longer.
+#' @param work_dir Working directory to write tables.
+#' @param log If not `NULL`, all output will be written to this file.
+#' @param skip 11-character string describing whether you want to skip certain analysis steps. This can be useful if you hit an error halfway through and want to skip all the steps that succeeded initially.
+#'
+#' @details
+#' This function re-runs the leaf temperature modeling pipeline we describe in the manuscript. It begins by downloading ~2 GB of data to your machine from Ameriflux and NEON. If you run the whole thing, you should expect it to take 2-3 hours. Most of that time is just downloading data, the actual modeling part takes just a few minutes. We have done our best to make the code robust, but ti is always possible that the analysis breaks halfway through. If that happens, you can adjust the `skip` parameter to ignore the steps that have already completed.
+#' 
+#' The skip parameter is an 11-character string. If the i-th character is 'y', then the i-th analysis step is skipped. If a step is skipped, it is assumed that the relevant data has already been written to `work_dir` with the expected filename. The order of steps is as follows:
+#'  \enumerate{
+#'   \item [get_amf_tower_data()]
+#'   \item [get_neon_flux()]
+#'   \item [get_neon_lidar()]
+#'   \item [fit_neon_lidar_k()]
+#'   \item [partition_neon_flux()]
+#'   \item [get_within_canopy_meteorology()]
+#'   \item [fit_aq_curves()]
+#'   \item [fit_medlyn_slopes()]
+#'   \item [run_neon_energy_balance()]
+#'   \item [model_radiometer_comparison()]
+#'   \item [gs_gbh_sensitivity()]
+#'  }
+#'  
+#'  See the linked functions for more information. Once the analysis finishes, you can run [write_all_figures()] to generate the figures we show in the manuscript.
+#'
+#' @export
+#'
 run_analysis <- function(amf_user, amf_email, neon_token, work_dir, log=NULL,
                          skip="nnnnnnnnnnn") {
   # Start logging
