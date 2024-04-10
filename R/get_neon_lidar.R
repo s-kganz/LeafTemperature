@@ -1,3 +1,13 @@
+#' Download NEON aerial LiDAR near flux towers
+#'
+#' @param site_meta Site metadata table \code{\link{site_meta}}.
+#' @param outdir Output directory where processed point clouds are saved.
+#'
+#' @description
+#' This function downloads all aerial LiDAR tiles within 50 m of the coordinates in `site_meta`, normalizes height, and then clips the points together into one 50 m circle. 
+#' 
+#'
+#' @export
 get_neon_lidar <- function(site_meta, outdir) {
   if (!dir.exists(outdir)) dir.create(outdir)
 

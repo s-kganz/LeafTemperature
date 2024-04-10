@@ -54,14 +54,28 @@ energy_balance_conductance_driver <- function(Ta, gs, gbH, Pa, RH, SW_dn, LW_dn,
   return(optim_result$minimum)
 }
 
+#' Stomatal/boundary layer sensitivity analysis
+#'
+#' @param outdir Directory where model results will be written.
+#' @param gs_min Minimum value for stomatal conductance (mol m-2 s-1).
+#' @param gs_max Maximum value for stomatal conductance (mol m-2 s-1).
+#' @param gbH_min Minimum value for boundary layer conductance (mol m-2 s-1).
+#' @param gbH_max Maximum value for boundary layer conductance (mol m-2 s-1).
+#' @param Ta Air temperature (K).
+#' @param Pa Air pressure (kPa).
+#' @param RH Relative humidity (%, from 0-100).
+#' @param a_lw Longwave absorptivity of leaves.
+#' @param a_sw Shortwave absorptivity of leaves.
+#'
+#' @description
+#' Stomatal conductance and boundary layer conductance are two important parameters that drive the temperature of a leaf. This function evaluates how these parameter drive temperature under a low, medium, and high radiation load.
+#'
+#' @export
+#'
 gs_gbh_sensitivity <- function(outdir, 
                                gs_min=0.01, gs_max=0.5, gbH_min=0.75, gbH_max=5,
                                Ta=293, Pa=100, RH=50, a_lw=0.98, a_sw=0.50) {
   # Set parameters ----
-  gs_min <- 0.01
-  gs_max <- 0.5
-  gbH_min <- 0.75
-  gbH_max <- 5
   gs_values <- seq(gs_min, gs_max, length.out=100)
   gbH_values <- seq(gbH_min, gbH_max, length.out=100)
   # Generally shortwave is about 1/3 of the absorbed radiation load

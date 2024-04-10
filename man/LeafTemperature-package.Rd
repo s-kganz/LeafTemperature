@@ -9,7 +9,7 @@
 This package archives analysis scripts and code to generate figures for our leaf temperature modeling manuscript.
 }
 \author{
-\strong{Maintainer}: Keenan Ganz \email{ganzk@uw dot edu} (\href{https://orcid.org/0000-0002-8486-3959}{ORCID})
+\strong{Maintainer}: Keenan Ganz \email{ganzk@uw.edu} (\href{https://orcid.org/0000-0002-8486-3959}{ORCID})
 
 }
 \keyword{internal}

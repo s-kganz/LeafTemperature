@@ -1,6 +1,18 @@
 # Download tower micrometeorology data from Ameriflux. Also, collect all of
 # the radiometer canopy temperature data in one table.
 
+#' Download tower data from Ameriflux
+#'
+#' @param site_meta Site metadata table \code{\link{site_meta}}.
+#' @param outdir Directory to write tower CSVs. A subfolder named `amf_tower_data` will be created here.
+#' @param user Ameriflux username.
+#' @param email Ameriflux email.
+#'
+#' @description
+#' This function downloads the current Ameriflux BASE product for each site listed in `site_meta`. It also isolates all `T_CANOPY` observations and writes these to a separate table. For the 11 sites listed in \code{\link{site_meta}}, about 2GB of storage is needed.
+#' 
+#'
+#' @export
 get_amf_tower_data <- function(site_meta, outdir, user, email) {
   if (!dir.exists(outdir)) dir.create(outdir)
   dir.create(file.path(outdir, "amf_tower_data"))

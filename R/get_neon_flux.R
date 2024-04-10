@@ -3,6 +3,20 @@
 # getting data through the OneFlux pipeline, so we cannot generate a gap-filled
 # dataset. However, we can pull the non gap-filled observations from NEON.
 
+#' Download eddy covariance data from NEON
+#'
+#' @param site_meta Site metadata table \code{\link{site_meta}}
+#' @param token NEON API token. Can be NULL or NA if you don't have one.
+#' @param outdir Directory to write stacked flux tables.
+#' 
+#' @description
+#' This function downloads eddy covariance data from NEON, stacks the level 4 NSAE data and QC flags, and then writes that to a CSV in `outdir`. For growing season data only, this downloads about 60 GB total, but uses <500 MB on disk at any one time by deleting intermediate files. This is suboptimal, but is currently recommended for large flux downloads (see \href{https://github.com/NEONScience/NEON-utilities/issues/131}{this github issue}).
+#' 
+#' For reproducibility with the manuscript, this script also excludes any flux products after 2021.
+#' 
+#'
+#' @export
+#'
 get_neon_flux <- function(site_meta, token, outdir) {
   flux_dpid <- "DP4.00200.001"
   
