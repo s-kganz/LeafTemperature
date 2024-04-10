@@ -2,7 +2,7 @@ Package: LeafTemperature
 Title: Modeling Leaf Temperature in Evergreen Forests
 Version: 0.0.0.9000
 Authors@R: 
-    person("Keenan", "Ganz", , "ganzk@uw dot edu", role = c("aut", "cre"),
+    person(given="Keenan", family="Ganz", email="ganzk@uw.edu", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0002-8486-3959"))
 Description: This package archives analysis scripts and code to generate figures for our leaf temperature modeling manuscript.
 License: MIT + file LICENSE
