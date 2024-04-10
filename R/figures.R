@@ -51,8 +51,9 @@ fig1_sensor_heights <- function(sensor_heights, site_meta, tower_color="grey50")
   # Attach filepath of the tree svgs to metadata table
   site_meta_filepath <- site_meta %>%
     filter(site_neon %in% use_sites) %>%
-    mutate(filepath = file.path(
-      "graphics", "tree_svgs", str_c(stringr::str_to_lower(site_ameriflux), ".png")
+    mutate(filepath = system.file(
+      "graphic_assets", str_c(stringr::str_to_lower(site_ameriflux), ".png"),
+      package="LeafTemperature"
     ))
   
   # Make a named vector to match pngs with site
@@ -69,7 +70,8 @@ fig1_sensor_heights <- function(sensor_heights, site_meta, tower_color="grey50")
       stat="identity",
       pattern="image",
       pattern_type = "none",
-      pattern_filename="graphics/tower_top.png",
+      pattern_filename=system.file("graphic_assets", "tower_top.png", 
+                                   package="LeafTemperature"),
       pattern_scale=-1,
       pattern_gravity="north",
       pattern_yoffset=0.5,
@@ -82,7 +84,8 @@ fig1_sensor_heights <- function(sensor_heights, site_meta, tower_color="grey50")
       fill="black",
       pattern="image",
       pattern_type="tile",
-      pattern_filename="graphics/tower_tile.png",
+      pattern_filename=system.file("graphic_assets", "tower_tile.png",
+                                   package="LeafTemperature"),
       pattern_filter="box",
       pattern_scale=-1,
       color=tower_color,
@@ -393,6 +396,20 @@ quiet_read <- function(search_dir, filename, ...) {
   read_csv(file.path(search_dir, filename), show_col_types=FALSE, ...)
 }
 
+#' Write all manuscript figures to a directory
+#'
+#' @param site_meta Table of site details, you should use \code{\link{site_meta}} unless you want to use a different set of sites.
+#' @param search_dir Directory the function will look in for data tables. This should be the same as `work_dir` in [run_analysis()].
+#' @param out_dir Output directory for all the figures.
+#' @param overwrite If a figure already exists, should it be overwritten?
+#'
+#' @details
+#' This function calls all of the `fig*` functions in sequence. It takes care of reading the right tables to reproduce what you see in the manuscript.
+#' 
+#' 
+#' @return Void, but all the figures get written to `out_dir`.
+#' @export
+#'
 write_all_figures <- function(site_meta, search_dir, out_dir, overwrite=FALSE) {
   message("Writing figures to ", out_dir)
   # Read data ----
