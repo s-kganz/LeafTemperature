@@ -102,7 +102,7 @@ run_analysis <-
     
     if (!skip[2]) {
       starting(steps[2])
-      get_neon_flux(site_meta, neon_token, work_dir)
+      get_neon_flux_simple(work_dir)
     }
     else
       skipping(steps[2])
