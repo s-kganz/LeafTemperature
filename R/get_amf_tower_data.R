@@ -43,7 +43,7 @@ get_amf_tower_data <- function(site_meta, outdir, user, email) {
       unzip = TRUE,
       parse_timestamp = TRUE
     ) %>% 
-      amf_filter_base() %>%
+      amerifluxr::amf_filter_base() %>%
       # The timestamp is recorded in local standard time *but is parsed as if it is UTC*
       # so we have to manually convert to UTC
       # https://github.com/chuhousen/amerifluxr/issues/95
