@@ -64,7 +64,8 @@ interpolate_tower_data <- function(tower, vars, var_z, interp_z, name_prefix="")
 #' @keywords internal
 #' @importFrom memoise memoise
 #' @importFrom amerifluxr amf_var_info
-amf_var_heights <- function() {amerifluxr::amf_var_info()}
+amf_var_heights <- memoise::memoise(function() {amerifluxr::amf_var_info()},
+                                    cache=cachem::cache_mem(max_age=86400))
 
 #' Get variables matching a regex and their height of observation.
 #'
