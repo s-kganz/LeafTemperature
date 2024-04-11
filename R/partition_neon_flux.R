@@ -103,11 +103,11 @@ partition_neon_flux <- function(site_meta, raw_flux, tower_dir, out_dir) {
     # Get site/year
     site_neon <- flux$site[1]
     year <- flux$year[1]
-    cat("Now processing", site_neon, year, "\n")
+    message(paste("Now processing", site_neon, year))
     
     timediff <- max(flux$timeBgn) - min(flux$timeBgn)
     if (timediff < lubridate::days(90)) {
-      cat("Fewer than 90 days of data, returning NA for this site-year.\n")
+      message("Fewer than 90 days of data, returning NA for this site-year.")
       return(NA)
     }
     
@@ -115,7 +115,7 @@ partition_neon_flux <- function(site_meta, raw_flux, tower_dir, out_dir) {
     # prevent REddyProc from finishing successfully. Yes this is bad style,
     # you have permission to yell at me.
     if (sum(!is.na(flux$data.fluxCo2.nsae.flux)) < 3200) {
-      cat("Insufficient non-NA data, returning NA for this site-year.\n")
+      message("Insufficient non-NA data, returning NA for this site-year.")
       return(NA)
     }
     

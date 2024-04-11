@@ -107,7 +107,6 @@ fit_neon_lidar_k <- function(site_meta, site_lai, tower_dir, lidar_dir, outdir) 
     # Extract site information from filename
     site_amf <- str_remove(basename(file), ".csv")
     site_neon <- site_meta$site_neon[match(site_amf, site_meta$site_ameriflux)]
-    cat("\t", site_neon, "\n")
     
     # Open tower observations
     this_tower <- read_csv(file, col_types=cols())

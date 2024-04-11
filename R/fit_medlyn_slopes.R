@@ -93,7 +93,8 @@ do_medlyn_fit <- function(tower, d, site, roughness_d, roughness_z0m, zr, zh) {
     upper=c(g1=10)
   )
   
-  str(coef(fit_v3))
+  message("Fit result")
+  message(coef(fit_v3))
   
   tower_gs$Gs_mol_predicted <- medlyn_gs(
     tower_gs$GPP_uStar_f, tower_gs$VPD, tower_gs$CO2, unname(coef(fit_v3))
@@ -107,7 +108,7 @@ do_medlyn_fit <- function(tower, d, site, roughness_d, roughness_z0m, zr, zh) {
 }
 
 neon_fit_medlyn <- function(site, tower, flux, zr, zh, L, rain_filter=3) {
-  cat("Now processing", site, "\n")
+  message(paste("Now processing", flux$site[1]))
   # Select needed columns from tower ----
   
   # For CO2, the MIXING_RATIO name means the mole fraction is per mole of dry 
@@ -145,7 +146,7 @@ neon_fit_medlyn <- function(site, tower, flux, zr, zh, L, rain_filter=3) {
     ) %>%
     rename(WS = WS_1_1_1) %>% drop_na()
   
-  cat("Initial # observations:", nrow(tower_select), "\n")
+  message(paste("Initial # observations:", nrow(tower_select)))
   
   # Identify periods where T/ET is close to 1 ----
   no_precip <- tower_select %>%
@@ -160,7 +161,7 @@ neon_fit_medlyn <- function(site, tower, flux, zr, zh, L, rain_filter=3) {
     # Drop night time data
     filter(SW_IN > 100)
   
-  cat("...after T/ET filtering", nrow(tower_transp_only), "\n")
+  message(paste("...after T/ET filtering", nrow(tower_transp_only)))
   
   # Calculate roughness parameters ----
   roughness <- bigleaf::roughness.parameters(
@@ -180,10 +181,10 @@ neon_fit_medlyn <- function(site, tower, flux, zr, zh, L, rain_filter=3) {
     rename(LE = data.fluxH2o.nsae.flux,
            NEE = data.fluxCo2.nsae.flux)
   
-  cat("...after joining flux", nrow(tower_transp_only_flux), "\n")
+  message(paste("...after joining flux", nrow(tower_transp_only_flux)))
   
   if (nrow(tower_transp_only_flux) < 50) {
-    cat("Too few observations! Returning NA...\n")
+    message("Too few observations! Returning NA...")
     return(list(site=site, g0=NA, g1=NA, data=NA))
   } else {
     return(do_medlyn_fit(tower_transp_only_flux, 0.01, site, 
@@ -205,7 +206,7 @@ neon_fit_driver <- function(site_meta, site_flux_qc, tower_dir, outdir, rain_fil
       filter(site == this_site_neon)
     
     if (nrow(this_flux) == 0) {
-      cat(this_site_neon, "has no flux! Skipping...\n")
+      message(paste(this_site_neon, "has no flux! Skipping..."))
       return(list(site=this_site_amf, g0=NA, g1=NA, data=NA))
     }
     

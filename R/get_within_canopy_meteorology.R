@@ -20,9 +20,10 @@ neon_interpolation_driver <- function(site_amf, site_neon, site_lad, tower, l) {
   
   interp_z <- approx(this_lad_profile$cum_lai, this_lad_profile$z, xout=l, rule=2)$y
   
-  cat("LAI -> z crosswalk:\n")
-  print(data.frame(l=l, z=interp_z))
-  
+  message(paste("Interpolating", site_neon))
+  message("LAI -> z crosswalk:")
+  message(paste0(capture.output(data.frame(l=l, z=interp_z)), collapse = "\n"))
+
   ## Do interpolation ----
   # Set variables to interpolate
   regexes <- c("TA_\\d_\\d_\\d", "H2O.*_\\d_\\d_\\d", "CO2_.*\\d_\\d_\\d",
@@ -30,7 +31,7 @@ neon_interpolation_driver <- function(site_amf, site_neon, site_lad, tower, l) {
   
   prefixes <- c("TA_", "H2O_", "CO2_", "WS_")
   interp_data <- foreach(pattern=regexes, prefix=prefixes, .combine=cbind) %do% {
-    cat("Interpolating regex", pattern, "...\n")
+    message(paste("Interpolating regex", pattern))
     vars_heights <- get_var_heights(names(tower), pattern, site_amf)
     vars <- vars_heights$vars
     heights <- vars_heights$heights

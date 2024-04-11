@@ -100,11 +100,11 @@ gs_gbh_sensitivity <- function(outdir,
     )
   
   # Run energy balance ----
+  message("Running gs/gbh model...")
   grid_eb <- grid %>%
     mutate(
       Tl = purrr::pmap_dbl(list(Ta, gs, gbH, Pa, RH, SW_dn, LW_dn),
-                           energy_balance_conductance_driver,
-                           .progress="EB conductance sensitivity"),
+                           energy_balance_conductance_driver),
       dT = Tl - Ta
     )
   

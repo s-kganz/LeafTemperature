@@ -260,6 +260,7 @@ run_neon_energy_balance <- function(site_meta, site_lai, site_flux_qc,
     mutate(PS_LAYER_GS = medlyn_gs(PS_LAYER_GPP, LAYER_VPD, LAYER_CO2, MEDLYN_g1, MEDLYN_g0))
   
   # Run energy balance models ----
+  message("Basic version...")
   flux_eb_result <- flux_ps_model %>%
     mutate(
       EB_MODEL = purrr::pmap(
@@ -267,8 +268,7 @@ run_neon_energy_balance <- function(site_meta, site_lai, site_flux_qc,
              RAD_SW_ABS, RAD_LW_ABS),
         energy_balance_driver,
         bounds=20,
-        run_no_transp=TRUE,
-        .progress="numeric EB model"
+        run_no_transp=TRUE
       ),
       # EB_MODEL_ISOTHERMAL = pmap(
       #   list(LAYER_TA+273.15, LAYER_WS, PS_LAYER_GS, RAD_TOC_PA, LAYER_RH,
@@ -284,6 +284,7 @@ run_neon_energy_balance <- function(site_meta, site_lai, site_flux_qc,
   
   # Second run with gbH way smaller by increasing characteristic leaf dimension
   # by an order of magnitude.
+  message("10 cm leaf version...")
   flux_eb_result_bigleaf <- flux_ps_model %>%
     mutate(
       EB_MODEL = purrr::pmap(
@@ -292,8 +293,7 @@ run_neon_energy_balance <- function(site_meta, site_lai, site_flux_qc,
         energy_balance_driver,
         d=0.1,
         bounds=20,
-        run_no_transp=TRUE,
-        .progress="low gbH EB model"
+        run_no_transp=TRUE
       )
     ) %>%
     unnest_wider(EB_MODEL, names_sep="_") %>%
@@ -301,6 +301,7 @@ run_neon_energy_balance <- function(site_meta, site_lai, site_flux_qc,
     
   
   # Third run on WREF only, and varying g1 from 2-10 for sensitivity analysis.
+  message("g1 sensitivity analysis...")
   flux_wref_g1_sensitivity <- flux_ps_weight %>%
     filter(SITE_NEON == "WREF") %>%
     drop_na(c(LAYER_H2O, LAYER_CO2)) %>%
@@ -315,8 +316,7 @@ run_neon_energy_balance <- function(site_meta, site_lai, site_flux_qc,
              RAD_SW_ABS, RAD_LW_ABS),
         energy_balance_driver,
         bounds=20,
-        run_no_transp=TRUE,
-        .progress="WREF g1 sensitivty analysis"
+        run_no_transp=TRUE
       )
     ) %>%
     unnest_wider(EB_MODEL, names_sep="_") %>%

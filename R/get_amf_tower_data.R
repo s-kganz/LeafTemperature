@@ -36,7 +36,7 @@ get_amf_tower_data <- function(site_meta, outdir, user, email) {
     this_i    <- which(this_site == site_meta$site_ameriflux)
     this_utc  <- site_meta$utc_offset[this_i]
     
-    cat(f, "\n", this_site, this_i, this_utc, "\n")
+    message(paste(f, "\n", this_site, this_i, this_utc))
     
     this_f <- amerifluxr::amf_read_base(
       file = f,

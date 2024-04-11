@@ -59,8 +59,12 @@ get_neon_flux <- function(site_meta, token, outdir) {
     before_2022 <- which(parse_number(str_split_i(this_months, "-", 1)) < 2022)
     this_months <- this_months[before_2022]
 
-    cat("Now downloading", length(this_months),
-        "months for site", this_site, "\n")
+    message(paste(
+      "Now downloading",
+      length(this_months),
+      "months for site",
+      this_site
+    ))
     
     foreach(m=this_months, .combine=rbind) %do% {
 
