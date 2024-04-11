@@ -101,6 +101,7 @@ write_if_not_exist <- function(table, path, ...) {
     write_csv(table, path, ...)
   } else {
     warning(paste("File", path, "already exists. Table not written."))
+    return(table)
   }
 }
 
