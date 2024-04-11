@@ -67,7 +67,7 @@ get_neon_lidar <- function(site_meta, outdir) {
     
     # print("Normalizing height...")
     # Normalize using the ground points already in the cloud
-    lasnorm <- lidR::normalize_height(lasclip, knnidw())
+    lasnorm <- lidR::normalize_height(lasclip, lidR::knnidw())
     
     #print("Saving processed LAZ...")
     lidR::writeLAS(lasnorm, file.path(outdir, paste0(site_id, ".laz")))
