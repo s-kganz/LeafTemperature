@@ -51,6 +51,11 @@ get_neon_flux <- function(site_meta, token, outdir) {
     "qfqm.fluxH2o.nsae.qfFinl"
   )
   
+  temp_flux_loc <- "temp_flux_loc"
+  if (temp_flux_loc != tempdir()) {
+    dir.create(temp_flux_loc)
+  }
+  
   flux_final <- foreach(i = 1:nrow(product_avail), .combine=rbind) %do% {
     
     this_site <- product_avail$siteCode[i]
@@ -75,11 +80,11 @@ get_neon_flux <- function(site_meta, token, outdir) {
         enddate=m,
         check.size=FALSE,
         token=token,
-        savepath=tempdir()
+        savepath=temp_flux_loc
       ))
       
       # Stack the table, select vars we care about
-      fpath <- file.path(tempdir(), "filesToStack00200")
+      fpath <- file.path(temp_flux_loc, "filesToStack00200")
       flux_stack <- neonUtilities::stackEddy(fpath, var=vars)
       
       flux_month <- flux_stack[[this_site]] %>%
@@ -87,6 +92,7 @@ get_neon_flux <- function(site_meta, token, outdir) {
         mutate(site=this_site)
       
       # Delete detritus
+      rm(flux_stack)
       unlink(fpath, recursive=TRUE, force=TRUE)
       if (dir.exists(fpath)) {
         message("Failed to delete")
