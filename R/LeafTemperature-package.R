@@ -11,6 +11,7 @@
 #' @importFrom stringr str_c
 #' @importFrom stringr str_detect
 #' @importFrom stringr str_remove
+#' @importFrom stringr str_split_i
 ## usethis namespace: end
 NULL
 
