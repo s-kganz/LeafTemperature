@@ -87,9 +87,12 @@ get_neon_flux <- function(site_meta, token, outdir) {
         mutate(site=this_site)
       
       # Delete detritus
-      unlink(fpath, recursive=TRUE)
-      stopifnot(!dir.exists(fpath))
-      
+      unlink(fpath, recursive=TRUE, force=TRUE)
+      if (dir.exists(fpath)) {
+        message("Failed to delete")
+        stop()
+      }
+
       return(flux_month)
     }
   }
