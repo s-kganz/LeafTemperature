@@ -58,14 +58,13 @@ interpolate_tower_data <- function(tower, vars, var_z, interp_z, name_prefix="")
 # Make a copy of this function in this package so we can memoize it.
 # See .onLoad() in zzz.R
 
-#' Return Ameriflux variable info (possibly from cache). This function only exists so that it can be memoized.
+#' Return Ameriflux variable info. Memoisation does not seem to work across platforms so this just spams the Ameriflux API.
 #'
 #' @return see \link[amerifluxr]{amf_var_info}
 #' @keywords internal
 #' @importFrom memoise memoise
 #' @importFrom amerifluxr amf_var_info
-amf_var_heights <- memoise::memoise(function() {amerifluxr::amf_var_info()},
-                                    cache=cachem::cache_disk(max_age=86400))
+amf_var_heights <- function() {amerifluxr::amf_var_info()}
 
 #' Get variables matching a regex and their height of observation.
 #'
