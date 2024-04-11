@@ -2,6 +2,7 @@
 "_PACKAGE"
 
 ## usethis namespace: start
+#' @importFrom amerifluxr amf_filter_base
 #' @importFrom foreach %do%
 #' @importFrom foreach foreach
 #' @importFrom lemon reposition_legend

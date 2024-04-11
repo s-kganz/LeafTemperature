@@ -14,7 +14,8 @@ Depends:
     readr,
     tidyr,
     dplyr,
-    ggplot2
+    ggplot2,
+    lubridate
 Imports:
     photosynthesis,
     bigleaf,
@@ -34,7 +35,6 @@ Imports:
     purrr,
     suncalc,
     lemon,
-    lubridate,
     scales,
     foreach
 LazyData: true
