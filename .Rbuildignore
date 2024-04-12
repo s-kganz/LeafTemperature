@@ -1,0 +1,9 @@
+^LICENSE\.md$
+^.*\.Rproj$
+^\.Rproj\.user$
+data_in
+data_out
+data_working
+graphics
+presentations
+scratch
