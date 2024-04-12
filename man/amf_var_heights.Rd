@@ -2,7 +2,7 @@
 % Please edit documentation in R/tower_util.R
 \name{amf_var_heights}
 \alias{amf_var_heights}
-\title{Return Ameriflux variable info (possibly from cache). This function only exists so that it can be memoized.}
+\title{Return Ameriflux variable info (possibly from cache).}
 \usage{
 amf_var_heights()
 }
@@ -10,6 +10,6 @@ amf_var_heights()
 see \link[amerifluxr]{amf_var_info}
 }
 \description{
-Return Ameriflux variable info (possibly from cache). This function only exists so that it can be memoized.
+Return Ameriflux variable info (possibly from cache).
 }
 \keyword{internal}

@@ -58,7 +58,7 @@ interpolate_tower_data <- function(tower, vars, var_z, interp_z, name_prefix="")
 # Make a copy of this function in this package so we can memoize it.
 # See .onLoad() in zzz.R
 
-#' Return Ameriflux variable info. Memoisation does not seem to work across platforms so this just spams the Ameriflux API.
+#' Return Ameriflux variable info (possibly from cache).
 #'
 #' @return see \link[amerifluxr]{amf_var_info}
 #' @keywords internal
