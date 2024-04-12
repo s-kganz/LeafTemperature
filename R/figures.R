@@ -118,17 +118,13 @@ fig1_sensor_heights <- function(sensor_heights, site_meta, tower_color="grey50")
     guides(pattern_filename="none") +
     # Styling
     labs(x="", y="Height above ground (m)", fill="", shape="") +
-    theme_bw() +
     theme(panel.grid.major.x = element_blank(),
           axis.text.x = element_blank(),
           axis.ticks.x = element_blank(),
           strip.text.x = element_blank(),
-          legend.text = element_text(size=12),
           legend.direction="horizontal",
-          panel.spacing = unit(0.5, "lines"),
-          axis.text.y = element_text(size=12),
-          axis.title.y = element_text(size=14))
-  
+          panel.spacing = unit(0.5, "lines"))
+
   reposition_legend(p, "center", panel=c("panel-3-2", "panel-3-3"))
 }
 #' @rdname fig1_sensor_heights
@@ -139,10 +135,9 @@ fig2_model_one_to_one <- function(eb_rad_tcan_summary) {
     geom_abline(slope=1, intercept=0, color="black", linetype="dashed") +
     scale_fill_viridis_c(limits=c(0, 200), oob=scales::squish) +
     facet_wrap(~ SITE_NEON) +
-    theme_bw() +
     coord_equal() +
-    labs(x=expression("Radiometer temperature ("*degree*"C)"),
-         y=expression("Model temperature ("*degree*"C)"),
+    labs(x=expression("Radiometer canopy temperature ("*degree*"C)"),
+         y=expression("Model leaf temperature ("*degree*"C)"),
          fill="Count") +
     theme(legend.direction = "horizontal")
 
@@ -157,28 +152,24 @@ fig3_regression_slopes <- function(eb_regressions) {
     ggplot(aes(x=slope_p50, y=LAYER_L)) +
     geom_vline(xintercept=1, color="grey50", linetype="dashed") +
     geom_errorbar(aes(xmin=slope_p025, xmax=slope_p975)) +
-    geom_point(aes(fill=prop_Tl_lt_Ta), color="black", size=4, pch=21) +
+    geom_point(aes(fill=prop_Tl_lt_Ta), color="black", size=3, pch=21) +
     geom_label(aes(label=SITE_NEON), x=-Inf, y=Inf,
-               hjust="left", vjust="top", size=5) +
+               hjust="left", vjust="top") +
     scale_fill_viridis_c() +
     scale_y_discrete(limits=rev) +
     scale_x_continuous(limits=c(0.97, 1.15)) +
     facet_grid(SITE_NEON ~ .,
                scales="free_y", space="free") +
-    theme_bw() +
     theme(strip.placement="outside",
           strip.background = element_blank(),
           strip.text.y = element_blank(),
-          panel.spacing = unit(1.5, "lines"),
-          axis.title = element_text(size=18),
-          legend.title = element_text(size=14),
-          legend.text = element_text(size=14)
+          panel.spacing = unit(1.5, "lines")
     ) +
     guides(fill = guide_colorbar(
       ticks.colour="black",
       frame.colour="black"
     )) +
-    labs(x=expression("T"[L]~"vs"~"T"[A]~"regression slope ("~degree*C*"/"*degree*C*")"),
+    labs(x=expression("T"[L]~"vs"~"T"[A]~"regression slope ("*degree*C*"/"*degree*C*")"),
          y=expression("Cumulative LAI (m"^2~"m"^-2*")"),
          fill=expression("Proportion T"[L]~"<"~"T"[A]))
 }
@@ -219,11 +210,10 @@ fig4_temp_forcing <- function(eb_result) {
       labels=c("Transpiration", "Net radiation"),
       values=hcl(h=c(195, 15), l=65, c=100)
     ) +
-    theme_bw() +
     labs(x="Temperature forcing (K)",
          y="", fill="")
   
-  reposition_legend(p, 'center', panel=c("panel-3-3"))
+  reposition_legend(p, 'center', panel=c("panel-3-2", "panel-3-3"))
 }
 
 #' @rdname fig1_sensor_heights
@@ -253,10 +243,10 @@ fig5_gs_gbh_sensitivity <- function(grid_eb, eb_result) {
     #xlim(c(gs_min, gs_max)) + ylim(gbH_min, gbH_max) +
     scale_x_continuous(limits=c(0.01, 0.5), expand=c(0, 0)) +
     scale_y_continuous(limits=c(0.75, 5.0), expand=c(0, 0)) +
-    theme_bw() +
     labs(x=expression("Stomatal conductance"~"(mol m"^-2~"s"^-1*")"),
-         y=expression("Boundary layer conductance"~"(mol m"^-2~"s"^-1*")"),
-         fill=expression(Delta*"T (K)"))
+         y=expression(atop("Boundary layer conductance", "(mol m"^-2~"s"^-1*")")),
+         fill=expression(Delta*"T (K)")) +
+    theme(strip.text = element_text(size=8))
 }
 
 #' @rdname fig1_sensor_heights
@@ -271,7 +261,6 @@ fig6_shade_gpp <- function(shade_gpp) {
     geom_point() +
     geom_vline(xintercept=0.552, color="red", linetype="dashed") +
     scale_y_discrete(limits=shade_gpp_sorted) +
-    theme_bw() +
     labs(x="Proportion shaded GPP", y="") +
     theme(panel.grid.minor.x = element_blank(),
           panel.grid.major.x = element_blank()) +
@@ -300,7 +289,7 @@ fig_s1_lidar_fit <- function(lidar_constants_df, iv_io_data,
     facet_wrap(~ site, scales="free") +
     labs(x="Cumulative LAI", y="Proportion available light",
          color="Proportion diffuse light", linetype="") +
-    scale_y_log10() + theme_bw()
+    scale_y_log10()
 }
 #' @rdname fig1_sensor_heights
 #' @export
@@ -323,7 +312,6 @@ fig_s2_medlyn_fit <- function(medlyn_data, medlyn_constants,
     coord_equal(xlim=c(0, gs_cutoff), ylim=c(0, gs_cutoff)) +
     scale_color_viridis_c() +
     facet_wrap(~ site_neon) +
-    theme_bw() +
     labs(x=expression("Penman-Monteith G"[s]~"(mol m"^-2~"s"^-1*")"),
          y=expression("Model G"[s]~"(mol m"^-2~"s"^-1*")"),
          color="VPD (kPa)")
@@ -353,8 +341,7 @@ fig_s3_aq_fit <- function(aq_constants, aq_data) {
     facet_wrap(~ site, scales="free_y") +
     labs(x=expression("Top-of-canopy shortwave (W m"^2*")"),
          y=expression("Canopy GPP ("*mu*"mol CO"[2]~"m"^-2~s^-1*")"),
-         color="") +
-    theme_bw()
+         color="")
 }
 #' @rdname fig1_sensor_heights
 #' @export
@@ -368,7 +355,6 @@ fig_s4_rad_model_pairings <- function(model_radiometer_crosswalk) {
     # Match color and pch in fig 1
     geom_point(aes(x="Radiometers", y=Height), fill="#00BFC4", pch=25, size=2) +
     facet_wrap(~ SITE_NEON, scales="free_y") +
-    theme_bw() +
     labs(x="", y="Height above ground (m)")
 }
 #' @rdname fig1_sensor_heights
@@ -382,10 +368,9 @@ fig_s5_g1_sensitivity <- function(wref_g1_regressions) {
     scale_fill_viridis_c() +
     scale_y_discrete(limits=rev) +
     scale_x_continuous(limits=c(0.97, NA)) +
-    theme_bw() +
-    labs(x=expression("T"[leaf]~"vs"~"T"[air]~"regression slope ("~degree*C*"/"*degree*C*")"),
+    labs(x=expression("T"[L]~"vs"~"T"[A]~"regression slope ("~degree*C*"/"*degree*C*")"),
          y=expression("Cumulative LAI (m"^2~"m"^-2*")"),
-         fill=expression("Proportion T"[leaf]~"<"~"T"[air])) +
+         fill=expression("Proportion T"[L]~"<"~"T"[A])) +
     guides(fill = guide_colorbar(
       ticks.colour="black",
       frame.colour="black"
@@ -413,6 +398,7 @@ quiet_read <- function(search_dir, filename, ...) {
 #' @param search_dir Directory the function will look in for data tables. This should be the same as `work_dir` in [run_analysis()].
 #' @param out_dir Output directory for all the figures.
 #' @param overwrite If a figure already exists, should it be overwritten?
+#' @param ... Arguments passed to \code{\link[ggplot2][theme]}. The default is `theme_bw` with a few font size changes.
 #'
 #' @details
 #' This function calls all of the `fig*` functions in sequence. It takes care of reading the right tables to reproduce what you see in the manuscript.
@@ -421,8 +407,19 @@ quiet_read <- function(search_dir, filename, ...) {
 #' @return Void, but all the figures get written to `out_dir`.
 #' @export
 #'
-write_all_figures <- function(site_meta, search_dir, out_dir, overwrite=FALSE) {
+write_all_figures <- function(site_meta, search_dir, out_dir, overwrite=FALSE,
+                              ...) {
   message("Writing figures to ", out_dir)
+  # Set ggplot theme ----
+  default_theme <- theme_bw() + theme(
+    axis.text = element_text(size=10),
+    axis.title = element_text(size=12),
+    strip.text = element_text(size=10),
+    legend.text = element_text(size=12),
+    legend.title = element_text(size=12)
+  )
+  
+  theme_set(default_theme)
   # Read data ----
   use_sites <- c("ABBY", "DEJU", "JERC", "OSBS", "RMNP", "TALL", "WREF")
   
@@ -495,7 +492,7 @@ write_all_figures <- function(site_meta, search_dir, out_dir, overwrite=FALSE) {
   safe_save(file.path(out_dir, "fig3_regression_slopes.png"),
             fig3_regression_slopes(eb_regressions),
             allow_overwrite=overwrite,
-            width=8, height=10)
+            width=5.5, height=7)
   
   safe_save(file.path(out_dir, "fig4_temp_forcing.png"),
             fig4_temp_forcing(eb_result),
@@ -505,7 +502,7 @@ write_all_figures <- function(site_meta, search_dir, out_dir, overwrite=FALSE) {
   safe_save(file.path(out_dir, "fig5_gs_gbh_sensitivity.png"),
             fig5_gs_gbh_sensitivity(grid_eb, eb_result),
             allow_overwrite=overwrite,
-            width=6.5, height=3)
+            width=6.5, height=2.5)
   
   safe_save(file.path(out_dir, "fig6_shade_gpp.png"),
             fig6_shade_gpp(shade_gpp),
