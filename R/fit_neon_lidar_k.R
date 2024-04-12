@@ -15,7 +15,7 @@
 
 # Fit LiDAR attenuation constants ----
 fit_lidar_constants <- function(site, site_lai, tower_toc_rad, lidar_dir, 
-                                zmax=NA, zmin=1) {
+                                zmax=NA, zmin=2) {
   # Z where cumulative LAI == total LAI and measurement height of Io
   if (is.na(zmax)) {
     zmax <- tower_toc_rad %>% filter(SITE_NEON == site) %>% 
