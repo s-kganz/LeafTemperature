@@ -22,7 +22,7 @@ fig3_regression_slopes(eb_regressions)
 
 fig4_temp_forcing(eb_result)
 
-fig5_gs_gbh_sensitivity(grid_eb)
+fig5_gs_gbh_sensitivity(grid_eb, eb_result)
 
 fig6_shade_gpp(shade_gpp)
 

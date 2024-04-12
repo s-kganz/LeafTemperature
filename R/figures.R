@@ -228,7 +228,15 @@ fig4_temp_forcing <- function(eb_result) {
 
 #' @rdname fig1_sensor_heights
 #' @export
-fig5_gs_gbh_sensitivity <- function(grid_eb) {
+fig5_gs_gbh_sensitivity <- function(grid_eb, eb_result) {
+  tot_rad_unique <- unique(grid_eb$tot_rad)
+  eb_tot_rad <- eb_result %>%
+    mutate(
+      rad_load = RAD_SW_ABS + RAD_LW_ABS,
+      # Map onto the panels in the figure
+      tot_rad = tot_rad_unique[sapply(rad_load, function(x) which.min(abs(x - tot_rad_unique)))]
+    )
+  
   ggplot(grid_eb) +
     metR::geom_contour_fill(mapping=aes(x=gs, y=gbH, z=dT),
                             binwidth=0.1) +
@@ -237,11 +245,14 @@ fig5_gs_gbh_sensitivity <- function(grid_eb) {
     metR::scale_fill_divergent() +
     # geom_label_contour(mapping=aes(x=gs, y=gbH, z=dT),
     #                    skip=0, label.placer=label_placer_fraction()) +
+    geom_rug(data=eb_tot_rad,
+             mapping=aes(x=PS_LAYER_GS, y=EB_MODEL_gbH),
+             alpha=0.01) +
     facet_wrap(~ tot_rad,
                labeller=label_bquote(LW[abs]*"+"*SW[abs]~"="~.(tot_rad)~"W m"^-2)) +
     #xlim(c(gs_min, gs_max)) + ylim(gbH_min, gbH_max) +
-    scale_x_continuous(expand=c(0, 0)) +
-    scale_y_continuous(expand=c(0, 0)) +
+    scale_x_continuous(limits=c(0.01, 0.5), expand=c(0, 0)) +
+    scale_y_continuous(limits=c(0.75, 5.0), expand=c(0, 0)) +
     theme_bw() +
     labs(x=expression("Stomatal conductance"~"(mol m"^-2~"s"^-1*")"),
          y=expression("Boundary layer conductance"~"(mol m"^-2~"s"^-1*")"),
@@ -492,7 +503,7 @@ write_all_figures <- function(site_meta, search_dir, out_dir, overwrite=FALSE) {
             width=5, height=4.5)
   
   safe_save(file.path(out_dir, "fig5_gs_gbh_sensitivity.png"),
-            fig5_gs_gbh_sensitivity(grid_eb),
+            fig5_gs_gbh_sensitivity(grid_eb, eb_result),
             allow_overwrite=overwrite,
             width=6.5, height=3)
   
