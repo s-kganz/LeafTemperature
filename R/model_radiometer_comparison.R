@@ -70,5 +70,8 @@ model_radiometer_comparison <- function(eb_result, rad_tcan, outdir) {
       r2   = cor(EB_MODEL_Tl, TCAN)^2
     )
   
-  return(accuracy_metrics)
+  write_if_not_exist(
+    accuracy_metrics,
+    file.path(outdir, "model_validation_statistics.csv")
+  )
 }
