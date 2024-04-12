@@ -123,7 +123,8 @@ fig1_sensor_heights <- function(sensor_heights, site_meta, tower_color="grey50")
           axis.ticks.x = element_blank(),
           strip.text.x = element_blank(),
           legend.direction="horizontal",
-          panel.spacing = unit(0.5, "lines"))
+          panel.spacing = unit(0.5, "lines"),
+          legend.text = element_text(size=rel(1.0)))
 
   reposition_legend(p, "center", panel=c("panel-3-2", "panel-3-3"))
 }
@@ -139,6 +140,10 @@ fig2_model_one_to_one <- function(eb_rad_tcan_summary) {
     labs(x=expression("Radiometer canopy temperature ("*degree*"C)"),
          y=expression("Model leaf temperature ("*degree*"C)"),
          fill="Count") +
+    guides(fill = guide_colorbar(
+      ticks.colour="black",
+      frame.colour="black"
+    )) +
     theme(legend.direction = "horizontal")
 
   reposition_legend(p, "center", panel=c("panel-3-2", "panel-3-3"))
@@ -163,7 +168,8 @@ fig3_regression_slopes <- function(eb_regressions) {
     theme(strip.placement="outside",
           strip.background = element_blank(),
           strip.text.y = element_blank(),
-          panel.spacing = unit(1.5, "lines")
+          panel.spacing = unit(1.5, "lines"),
+          legend.text = element_text(size=rel(1.0))
     ) +
     guides(fill = guide_colorbar(
       ticks.colour="black",
@@ -211,7 +217,8 @@ fig4_temp_forcing <- function(eb_result) {
       values=hcl(h=c(195, 15), l=65, c=100)
     ) +
     labs(x="Temperature forcing (K)",
-         y="", fill="")
+         y="", fill="") +
+    theme(legend.text=element_text(size=rel(1.0)))
   
   reposition_legend(p, 'center', panel=c("panel-3-2", "panel-3-3"))
 }
@@ -246,7 +253,7 @@ fig5_gs_gbh_sensitivity <- function(grid_eb, eb_result) {
     labs(x=expression("Stomatal conductance"~"(mol m"^-2~"s"^-1*")"),
          y=expression(atop("Boundary layer conductance", "(mol m"^-2~"s"^-1*")")),
          fill=expression(Delta*"T (K)")) +
-    theme(strip.text = element_text(size=8))
+    theme(strip.text = element_text(size=rel(0.7)))
 }
 
 #' @rdname fig1_sensor_heights
@@ -411,13 +418,7 @@ write_all_figures <- function(site_meta, search_dir, out_dir, overwrite=FALSE,
                               ...) {
   message("Writing figures to ", out_dir)
   # Set ggplot theme ----
-  default_theme <- theme_bw() + theme(
-    axis.text = element_text(size=10),
-    axis.title = element_text(size=12),
-    strip.text = element_text(size=10),
-    legend.text = element_text(size=12),
-    legend.title = element_text(size=12)
-  )
+  default_theme <- theme_bw()
   
   theme_set(default_theme)
   # Read data ----
