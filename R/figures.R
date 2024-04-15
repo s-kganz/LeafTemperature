@@ -252,18 +252,21 @@ fig5_gs_gbh_sensitivity <- function(grid_eb, eb_result) {
     scale_y_continuous(limits=c(0.75, 5.0), expand=c(0, 0)) +
     labs(x=expression("Stomatal conductance"~"(mol m"^-2~"s"^-1*")"),
          y=expression(atop("Boundary layer conductance", "(mol m"^-2~"s"^-1*")")),
-         fill=expression(Delta*"T (K)")) +
+         fill=expression("T"[L]~"-"~"T"[A]~"(K)")) +
     theme(strip.text = element_text(size=rel(0.7)))
 }
 
 #' @rdname fig1_sensor_heights
 #' @export
-fig6_shade_gpp <- function(shade_gpp) {
+fig6_shade_gpp <- function(shade_gpp, site_lai) {
   # Shaded GPP calculation
   shade_gpp_sorted <- shade_gpp %>% arrange(desc(prop_gpp_shade)) %>% 
     pull(SITE_NEON)
   
-  shade_gpp %>%
+  shade_lai <- shade_gpp %>%
+    left_join(site_lai, by="SITE_NEON")
+  
+  left <- shade_gpp %>%
     ggplot(aes(y=SITE_NEON, x=prop_gpp_shade)) +
     geom_point() +
     geom_vline(xintercept=0.552, color="red", linetype="dashed") +
@@ -272,6 +275,15 @@ fig6_shade_gpp <- function(shade_gpp) {
     theme(panel.grid.minor.x = element_blank(),
           panel.grid.major.x = element_blank()) +
     xlim(0, 0.7)
+  
+  right <- shade_lai %>%
+    ggplot(aes(x=LAI, y=prop_gpp_shade)) +
+    geom_point() +
+    ggrepel::geom_label_repel(aes(label=SITE_NEON)) +
+    labs(x="Site leaf area index",
+         y="Proportion shaded GPP")
+  
+  gridExtra::grid.arrange(left, right, ncol=2)
 }
 
 
@@ -473,6 +485,9 @@ write_all_figures <- function(site_meta, search_dir, out_dir, overwrite=FALSE,
   
   # Shaded GPP calculation
   shade_gpp <- quiet_read(search_dir, file.path("model_run", "cross_site_shade_gpp.csv"))
+  site_lai <- eb_result %>%
+    select(SITE_NEON, LAI) %>%
+    distinct()
   
   # g1 sensitivity analysis
   wref_g1_sensitivity <- quiet_read(search_dir, file.path("model_run", "wref_eb_g1_sensitivity.csv"))
@@ -506,9 +521,9 @@ write_all_figures <- function(site_meta, search_dir, out_dir, overwrite=FALSE,
             width=6.5, height=2.5)
   
   safe_save(file.path(out_dir, "fig6_shade_gpp.png"),
-            fig6_shade_gpp(shade_gpp),
+            fig6_shade_gpp(shade_gpp, site_lai),
             allow_overwrite=overwrite,
-            width=4, height=2)
+            width=6.5, height=2)
   
   ### Supplemental ----
   safe_save(file.path(out_dir, "fig_s1_lidar_fit.png"),
