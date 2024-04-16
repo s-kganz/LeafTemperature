@@ -227,12 +227,16 @@ fig4_temp_forcing <- function(eb_result) {
 #' @export
 fig5_gs_gbh_sensitivity <- function(grid_eb, eb_result) {
   tot_rad_unique <- unique(grid_eb$tot_rad)
+  
   eb_tot_rad <- eb_result %>%
     mutate(
       rad_load = RAD_SW_ABS + RAD_LW_ABS,
       # Map onto the panels in the figure
-      tot_rad = tot_rad_unique[sapply(rad_load, function(x) which.min(abs(x - tot_rad_unique)))]
+      tot_rad = tot_rad_unique[sapply(rad_load, function(x) which.min(abs(x - tot_rad_unique)))],
+      type="obs"
     )
+  
+  grid_eb$type <- "grid"
   
   ggplot(grid_eb) +
     metR::geom_contour_fill(mapping=aes(x=gs, y=gbH, z=dT),
@@ -240,20 +244,23 @@ fig5_gs_gbh_sensitivity <- function(grid_eb, eb_result) {
     # geom_contour(mapping=aes(x=gs, y=gbH, z=dT), color="black",
     #              binwidth=0.25) +
     metR::scale_fill_divergent() +
+    labs(fill=expression("T"[L]~"-"~"T"[A]~"(K)")) +
     # geom_label_contour(mapping=aes(x=gs, y=gbH, z=dT),
     #                    skip=0, label.placer=label_placer_fraction()) +
-    geom_rug(data=eb_tot_rad,
-             mapping=aes(x=PS_LAYER_GS, y=EB_MODEL_gbH),
-             alpha=0.01) +
-    facet_wrap(~ tot_rad,
-               labeller=label_bquote(LW[abs]*"+"*SW[abs]~"="~.(tot_rad)~"W m"^-2)) +
+    ggnewscale::new_scale_fill() +
+    geom_bin2d(data=eb_tot_rad,
+                mapping=aes(x=PS_LAYER_GS, y=EB_MODEL_gbH)) +
+    scale_fill_viridis_c() +
+    labs(fill="Count") +
+    facet_grid(type ~ tot_rad,
+               labeller=label_bquote(cols=LW[abs]*"+"*SW[abs]~"="~.(tot_rad)~"W m"^-2)) +
     #xlim(c(gs_min, gs_max)) + ylim(gbH_min, gbH_max) +
     scale_x_continuous(limits=c(0.01, 0.5), expand=c(0, 0)) +
     scale_y_continuous(limits=c(0.75, 5.0), expand=c(0, 0)) +
     labs(x=expression("Stomatal conductance"~"(mol m"^-2~"s"^-1*")"),
-         y=expression(atop("Boundary layer conductance", "(mol m"^-2~"s"^-1*")")),
-         fill=expression("T"[L]~"-"~"T"[A]~"(K)")) +
-    theme(strip.text = element_text(size=rel(0.7)))
+         y=expression(atop("Boundary layer conductance", "(mol m"^-2~"s"^-1*")"))) +
+    theme(strip.text = element_text(size=rel(0.8)),
+          strip.text.y = element_blank())
 }
 
 #' @rdname fig1_sensor_heights
@@ -266,24 +273,15 @@ fig6_shade_gpp <- function(shade_gpp, site_lai) {
   shade_lai <- shade_gpp %>%
     left_join(site_lai, by="SITE_NEON")
   
-  left <- shade_gpp %>%
-    ggplot(aes(y=SITE_NEON, x=prop_gpp_shade)) +
-    geom_point() +
-    geom_vline(xintercept=0.552, color="red", linetype="dashed") +
-    scale_y_discrete(limits=shade_gpp_sorted) +
-    labs(x="Proportion shaded GPP", y="") +
-    theme(panel.grid.minor.x = element_blank(),
-          panel.grid.major.x = element_blank()) +
-    xlim(0, 0.7)
-  
-  right <- shade_lai %>%
+  shade_lai %>%
     ggplot(aes(x=LAI, y=prop_gpp_shade)) +
+    geom_hline(yintercept=0.552, color="red", linetype="dashed") +
     geom_point() +
-    ggrepel::geom_label_repel(aes(label=SITE_NEON)) +
+    ggrepel::geom_label_repel(aes(label=SITE_NEON), force_pull=2) +
+    ylim(0, 0.6) +
+    xlim(0, NA) +
     labs(x="Site leaf area index",
          y="Proportion shaded GPP")
-  
-  gridExtra::grid.arrange(left, right, ncol=2)
 }
 
 
@@ -518,12 +516,12 @@ write_all_figures <- function(site_meta, search_dir, out_dir, overwrite=FALSE,
   safe_save(file.path(out_dir, "fig5_gs_gbh_sensitivity.png"),
             fig5_gs_gbh_sensitivity(grid_eb, eb_result),
             allow_overwrite=overwrite,
-            width=6.5, height=2.5)
+            width=7, height=4.25)
   
   safe_save(file.path(out_dir, "fig6_shade_gpp.png"),
             fig6_shade_gpp(shade_gpp, site_lai),
             allow_overwrite=overwrite,
-            width=6.5, height=2)
+            width=4.5, height=3)
   
   ### Supplemental ----
   safe_save(file.path(out_dir, "fig_s1_lidar_fit.png"),

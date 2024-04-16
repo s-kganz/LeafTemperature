@@ -5,6 +5,7 @@
 #' @importFrom amerifluxr amf_filter_base
 #' @importFrom foreach %do%
 #' @importFrom foreach foreach
+#' @importFrom ggnewscale new_scale_fill
 #' @importFrom ggrepel geom_label_repel
 #' @importFrom gridExtra grid.arrange
 #' @importFrom lemon reposition_legend
