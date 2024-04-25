@@ -3,6 +3,29 @@
 # for a particular figure.
 # Main figures ----
 
+# Helper function to make a site map
+fig_site_map <- function(site_meta) {
+  site_sf <- sf::st_as_sf(site_meta, coords=c("tower_lon", "tower_lat"))
+  sf::st_crs(site_sf) <- 4326
+  
+  us_states <- tigris::states(cb=TRUE) %>% tigris::shift_geometry() %>%
+    filter(!(STUSPS %in% c("PR", "AS", "GU", "MP", "VI", "HI")))
+  
+  site_sf_shift <- tigris::shift_geometry(site_sf)
+  
+  ggplot() +
+    geom_sf(data=us_states, fill=NA, color="grey80") +
+    ggrepel::geom_label_repel(
+      data=site_sf_shift, 
+      mapping=aes(label=as.character(n), geometry=geometry),
+      stat="sf_coordinates",
+      show.legend = FALSE,
+      min.segment.length = 0,
+      size=3
+    ) +
+    theme_void()
+}
+
 #' Functions to generate manuscript figures
 #'
 #' @param sensor_heights Table of Ameriflux sensor heights as returned by [amf_var_heights()]
@@ -112,7 +135,8 @@ fig1_sensor_heights <- function(sensor_heights, site_meta, tower_color="grey50")
       size=2.5
     ) +
     scale_shape_manual(values=c(21, 25)) +
-    geom_label(aes(label=site_neon), x=-Inf, y=Inf, vjust=1, hjust=0) +
+    geom_label(aes(label=str_c(site_neon, " (", n, ")")), 
+               x=-Inf, y=Inf, vjust=1, hjust=0) +
     facet_wrap(~ site_neon, scales="free_y") +
     # suppress image legend
     guides(pattern_filename="none") +
@@ -122,12 +146,19 @@ fig1_sensor_heights <- function(sensor_heights, site_meta, tower_color="grey50")
           axis.text.x = element_blank(),
           axis.ticks.x = element_blank(),
           strip.text.x = element_blank(),
-          legend.direction="horizontal",
+          legend.direction="vertical",
           panel.spacing = unit(0.5, "lines"),
           legend.text = element_text(size=rel(1.0)))
+  
+  # Move the legend to a blank panel
+  p <- reposition_legend(p, "center", panel="panel-3-3")
 
-  reposition_legend(p, "center", panel=c("panel-3-2", "panel-3-3"))
+  # Put site map in the other blank panel
+  siteMap <- ggplotGrob(fig_site_map(site_meta))
+  gtable_add_grob(p, siteMap, t=20, l=11, r=11, b=20, 
+                  clip="off", name="map")
 }
+
 #' @rdname fig1_sensor_heights
 #' @export
 fig2_model_one_to_one <- function(eb_rad_tcan_summary) {
@@ -249,7 +280,7 @@ fig5_gs_gbh_sensitivity <- function(grid_eb, eb_result) {
     #                    skip=0, label.placer=label_placer_fraction()) +
     ggnewscale::new_scale_fill() +
     geom_bin2d(data=eb_tot_rad,
-                mapping=aes(x=PS_LAYER_GS, y=EB_MODEL_gbH)) +
+               mapping=aes(x=PS_LAYER_GS, y=EB_MODEL_gbH)) +
     scale_fill_viridis_c() +
     labs(fill="Count") +
     facet_grid(type ~ tot_rad,
@@ -262,6 +293,7 @@ fig5_gs_gbh_sensitivity <- function(grid_eb, eb_result) {
     theme(strip.text = element_text(size=rel(0.8)),
           strip.text.y = element_blank())
 }
+
 
 #' @rdname fig1_sensor_heights
 #' @export
@@ -436,7 +468,9 @@ write_all_figures <- function(site_meta, search_dir, out_dir, overwrite=FALSE,
   
   # General site metadata
   site_meta <- site_meta %>%
-    filter(site_neon %in% use_sites)
+    filter(site_neon %in% use_sites) %>%
+    arrange(site_neon) %>%
+    mutate(n = row_number())
   
   # Height of ameriflux sensors
   sensor_heights <- amf_var_heights() %>%
@@ -493,10 +527,19 @@ write_all_figures <- function(site_meta, search_dir, out_dir, overwrite=FALSE,
   
   ## Generate all the figs ----
   ### Main text ----
-  safe_save(file.path(out_dir, "fig1_sensor_heights.png"),
-            fig1_sensor_heights(sensor_heights, site_meta),
-            allow_overwrite=overwrite,
-            width=6.5, height=4)
+  
+  # Since this function returns a gtable, we can't use ggsave to save it.
+  
+  if (!file.exists(file.path(out_dir, "fig1_sensor_heights.png")) | overwrite) {
+    gtab <- fig1_sensor_heights(sensor_heights, site_meta)
+    png(
+      file.path(out_dir, "fig1_sensor_heights.png"),
+      width=6.5, height=4, units="in", res=300
+    )
+    grid::grid.newpage()
+    grid::grid.draw(gtab)
+    dev.off()
+  }
   
   safe_save(file.path(out_dir, "fig2_model_one_to_one.png"),
             fig2_model_one_to_one(eb_rad_tcan_summary),
@@ -516,7 +559,7 @@ write_all_figures <- function(site_meta, search_dir, out_dir, overwrite=FALSE,
   safe_save(file.path(out_dir, "fig5_gs_gbh_sensitivity.png"),
             fig5_gs_gbh_sensitivity(grid_eb, eb_result),
             allow_overwrite=overwrite,
-            width=7, height=4.25)
+            width=6.5, height=4)
   
   safe_save(file.path(out_dir, "fig6_shade_gpp.png"),
             fig6_shade_gpp(shade_gpp, site_lai),

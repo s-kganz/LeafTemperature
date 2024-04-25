@@ -7,15 +7,21 @@
 #' @importFrom foreach foreach
 #' @importFrom ggnewscale new_scale_fill
 #' @importFrom ggrepel geom_label_repel
+#' @importFrom grid grid.draw
+#' @importFrom grid grid.newpage
 #' @importFrom gridExtra grid.arrange
+#' @importFrom gtable gtable_add_grob
 #' @importFrom lemon reposition_legend
 #' @importFrom purrr map
 #' @importFrom purrr map_dbl
 #' @importFrom purrr pmap
+#' @importFrom sf st_as_sf
+#' @importFrom sf st_crs
 #' @importFrom stringr str_c
 #' @importFrom stringr str_detect
 #' @importFrom stringr str_remove
 #' @importFrom stringr str_split_i
+#' @importFrom tigris shift_geometry
 ## usethis namespace: end
 NULL
 

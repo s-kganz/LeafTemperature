@@ -39,5 +39,9 @@ Imports:
     foreach,
     ggrepel,
     gridExtra,
-    ggnewscale
+    ggnewscale,
+    grid,
+    sf,
+    tigris,
+    gtable
 LazyData: true
