@@ -183,7 +183,7 @@ fig2_model_one_to_one <- function(eb_rad_tcan_summary) {
 #' @rdname fig1_sensor_heights
 #' @export
 fig3_regression_slopes <- function(eb_regressions) {
-  eb_regressions %>%
+  p <- eb_regressions %>%
     mutate(LAYER_L = factor(LAYER_L)) %>%
     ggplot(aes(x=slope_p50, y=LAYER_L)) +
     geom_vline(xintercept=1, color="grey50", linetype="dashed") +
@@ -193,23 +193,31 @@ fig3_regression_slopes <- function(eb_regressions) {
                hjust="left", vjust="top") +
     scale_fill_viridis_c() +
     scale_y_discrete(limits=rev) +
-    scale_x_continuous(limits=c(0.97, 1.15)) +
+    scale_x_continuous(limits=c(0.98, 1.15)) +
     facet_grid(SITE_NEON ~ .,
                scales="free_y", space="free") +
     theme(strip.placement="outside",
           strip.background = element_blank(),
           strip.text.y = element_blank(),
-          panel.spacing = unit(1.5, "lines"),
-          legend.text = element_text(size=rel(1.0))
+          panel.spacing = unit(1, "lines"),
+          # Text a little bigger
+          legend.text = element_text(size=rel(1.0)),
+          # Colorbar a little smaller
+          legend.key.height = rel(0.9),
+          # No fill
+          legend.background = element_rect(fill=NA)
     ) +
     guides(fill = guide_colorbar(
       ticks.colour="black",
       frame.colour="black"
     )) +
-    labs(x=expression("T"[L]~"vs"~"T"[A]~"regression slope ("*degree*C*"/"*degree*C*")"),
+    labs(x=expression("T"[L]~"on"~"T"[A]~"regression slope ("*degree*C*"/"*degree*C*")"),
          y=expression("Cumulative LAI (m"^2~"m"^-2*")"),
          fill=expression("Proportion T"[L]~"<"~"T"[A]))
+  
+  reposition_legend(p, position="right", panel=c("panel-7-1"))
 }
+
 #' @rdname fig1_sensor_heights
 #' @export
 fig4_temp_forcing <- function(eb_result) {
@@ -530,8 +538,10 @@ write_all_figures <- function(site_meta, search_dir, out_dir, overwrite=FALSE,
   
   # Since this function returns a gtable, we can't use ggsave to save it.
   
-  if (!file.exists(file.path(out_dir, "fig1_sensor_heights.png")) | overwrite) {
+  fname <- file.path(out_dir, "fig1_sensor_heights.png")
+  if (!file.exists(fname) | overwrite) {
     gtab <- fig1_sensor_heights(sensor_heights, site_meta)
+    message("Writing ", fname)
     png(
       file.path(out_dir, "fig1_sensor_heights.png"),
       width=6.5, height=4, units="in", res=300
@@ -549,7 +559,7 @@ write_all_figures <- function(site_meta, search_dir, out_dir, overwrite=FALSE,
   safe_save(file.path(out_dir, "fig3_regression_slopes.png"),
             fig3_regression_slopes(eb_regressions),
             allow_overwrite=overwrite,
-            width=5.5, height=7)
+            width=4.5, height=7)
   
   safe_save(file.path(out_dir, "fig4_temp_forcing.png"),
             fig4_temp_forcing(eb_result),
