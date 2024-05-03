@@ -13,7 +13,7 @@
 #'
 #' 
 conductance_radiative_heat <- function(Ta, Pa, rho, rho_mol, 
-                                       a_lw=0.98,
+                                       a_lw=0.95,
                                        cp=eb_constants_$cp,
                                        sb=eb_constants_$sb) {
   2 * rho_mol * 4 * a_lw * sb * Ta^3 / (rho * cp)
@@ -65,7 +65,7 @@ conductance_boundary_heat_broadleaf <- function(u, d, rho_mol) {
 #' @keywords internal
 #'
 #' 
-decoupling_coefficient <- function(gR, gbH, gs, d_esat, gamma, a_lw = 0.98) {
+decoupling_coefficient <- function(gR, gbH, gs, d_esat, gamma, a_lw = 0.95) {
   eps <- d_esat / gamma
   
   (eps + 2 + (gR / gbH)) / (eps + ((gR+gbH) / gs) + gR/gbH)

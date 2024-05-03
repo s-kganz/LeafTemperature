@@ -10,7 +10,7 @@
 #' @param is_sunlit Is the leaf in shade? (1/0)
 #' @param illuminance Accessibility of diffuse light (0-1)
 #' @param a_sw Absorptivity of shortwave radiation (0.5)
-#' @param a_lw Absorptivity of longwave radiation (0.98)
+#' @param a_lw Absorptivity of longwave radiation (0.95)
 #'
 #' @return Rn, Net isothermal radiation (W/m2)
 #' @keywords internal
@@ -34,7 +34,7 @@ net_isothermal_radiation <- function(SW_abs, LW_abs_dn, Ta, a_lw) {
 #' @keywords internal
 #'
 #' 
-net_nonisothermal_radiation <- function(SW_abs, LW_abs_dn, Tl, a_lw=0.98) {
+net_nonisothermal_radiation <- function(SW_abs, LW_abs_dn, Tl, a_lw=0.95) {
   SW_abs + LW_abs_dn - outgoing_longwave_radiation(Tl, ef=a_lw)
 }
 

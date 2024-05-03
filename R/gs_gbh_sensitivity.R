@@ -8,7 +8,7 @@
 # like this easier.
 energy_balance_conductance_error <- function(Tl, Ta, gs, gbH, Pa, RH,
                                              SW_dn, LW_dn,
-                                             a_lw=0.98, a_sw=0.50) {
+                                             a_lw=0.95, a_sw=0.50) {
   # Physical parameters of the air
   rho     <- dry_air_density(Ta, Pa, eb_constants_$cp, eb_constants_$Mair)
   rho_mol <- dry_air_molar_density(Ta, Pa, eb_constants_$cp, eb_constants_$Mair)
@@ -42,7 +42,7 @@ energy_balance_conductance_error <- function(Tl, Ta, gs, gbH, Pa, RH,
 }
 
 energy_balance_conductance_driver <- function(Ta, gs, gbH, Pa, RH, SW_dn, LW_dn,
-                                              a_lw=0.98, a_sw=0.50, bounds=20) {
+                                              a_lw=0.95, a_sw=0.50, bounds=20) {
   optim_result <- stats::optimize(
     energy_balance_conductance_error,
     c(Ta-bounds, Ta+bounds),
@@ -74,7 +74,7 @@ energy_balance_conductance_driver <- function(Ta, gs, gbH, Pa, RH, SW_dn, LW_dn,
 #'
 gs_gbh_sensitivity <- function(outdir, 
                                gs_min=0.01, gs_max=0.5, gbH_min=0.75, gbH_max=5,
-                               Ta=293, Pa=100, RH=50, a_lw=0.98, a_sw=0.50) {
+                               Ta=293, Pa=100, RH=50, a_lw=0.95, a_sw=0.50) {
   # Set parameters ----
   gs_values <- seq(gs_min, gs_max, length.out=100)
   gbH_values <- seq(gbH_min, gbH_max, length.out=100)
@@ -95,7 +95,7 @@ gs_gbh_sensitivity <- function(outdir,
       RH = 50, # %
       SW_dn = tot_rad * (1/3),
       LW_dn = tot_rad * (2/3),
-      a_lw = 0.98, # -
+      a_lw = 0.95, # -
       a_sw = 0.50  # -
     )
   

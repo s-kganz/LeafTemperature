@@ -23,7 +23,7 @@
 #' 
 energy_balance_error <- function(Tl, Ta, u, gs, Pa, RH, 
                                  SW_abs, LW_abs_dn,
-                                 a_lw=0.98, a_sw=0.50, d=0.01,
+                                 a_lw=0.95, a_sw=0.50, d=0.01,
                                  aslist=FALSE) {
   # Physical parameters of the air
   rho     <- dry_air_density(Ta, Pa, eb_constants_$cp, eb_constants_$Mair)
@@ -75,7 +75,7 @@ energy_balance_error <- function(Tl, Ta, u, gs, Pa, RH,
 #' numerical optimization.
 energy_balance_driver <- function(Ta, u, gs, Pa, RH, 
                                   SW_abs, LW_abs_dn,
-                                  a_lw=0.98, a_sw=0.50, d=0.01, bounds=20,
+                                  a_lw=0.95, a_sw=0.50, d=0.01, bounds=20,
                                   run_no_transp=TRUE) {
   optim_result <- optimize(
     energy_balance_error,
