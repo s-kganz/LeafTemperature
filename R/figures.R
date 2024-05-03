@@ -282,14 +282,14 @@ fig5_gs_gbh_sensitivity <- function(grid_eb, eb_result) {
                             binwidth=0.1) +
     # geom_contour(mapping=aes(x=gs, y=gbH, z=dT), color="black",
     #              binwidth=0.25) +
-    metR::scale_fill_divergent() +
+    metR::scale_fill_divergent(guide=guide_colorbar(order=1)) +
     labs(fill=expression("T"[L]~"-"~"T"[A]~"(K)")) +
     # geom_label_contour(mapping=aes(x=gs, y=gbH, z=dT),
     #                    skip=0, label.placer=label_placer_fraction()) +
     ggnewscale::new_scale_fill() +
     geom_bin2d(data=eb_tot_rad,
                mapping=aes(x=PS_LAYER_GS, y=EB_MODEL_gbH)) +
-    scale_fill_viridis_c() +
+    scale_fill_viridis_c(guide=guide_colorbar(order=2)) +
     labs(fill="Count") +
     facet_grid(type ~ tot_rad,
                labeller=label_bquote(cols=LW[abs]*"+"*SW[abs]~"="~.(tot_rad)~"W m"^-2)) +
