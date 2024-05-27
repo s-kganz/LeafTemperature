@@ -132,8 +132,8 @@ absorbed_longwave_radiation <- function(Ta, l, L,
   # Partition into sun and shade
   f_sun <- exp(-kb * l)
   
-  q_sun <- f_sun * q_net
-  q_shade <- (1-f_sun) * q_net
+  q_sun <- f_sun * q_net * ef
+  q_shade <- (1-f_sun) * q_net * ef
   
   if (aslist) {
     return(list(
@@ -178,7 +178,7 @@ absorbed_downwelling_longwave_radiation <- function(Ta, l, L,
   
   # Multiplying by 2 here because longwave radiation is diffuse and radiated
   # in all directions. So, the underside of leaves also receives this flux.
-  LW_abs_dn <- 2 * eb_constants_$sb * e_down * Ta^4
+  LW_abs_dn <- 2 * eb_constants_$sb * e_down * Ta^4 * ef
   
   if (aslist) {
     return(list(
