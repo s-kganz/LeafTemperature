@@ -4,7 +4,7 @@
 \alias{write_all_figures}
 \title{Write all manuscript figures to a directory}
 \usage{
-write_all_figures(site_meta, search_dir, out_dir, overwrite = FALSE)
+write_all_figures(site_meta, search_dir, out_dir, overwrite = FALSE, ...)
 }
 \arguments{
 \item{site_meta}{Table of site details, you should use \code{\link{site_meta}} unless you want to use a different set of sites.}
@@ -14,6 +14,8 @@ write_all_figures(site_meta, search_dir, out_dir, overwrite = FALSE)
 \item{out_dir}{Output directory for all the figures.}
 
 \item{overwrite}{If a figure already exists, should it be overwritten?}
+
+\item{...}{Arguments passed to \code{\link[ggplot2][theme]}. The default is \code{theme_bw} with a few font size changes.}
 }
 \value{
 Void, but all the figures get written to \code{out_dir}.

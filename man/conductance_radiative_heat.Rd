@@ -9,7 +9,7 @@ conductance_radiative_heat(
   Pa,
   rho,
   rho_mol,
-  a_lw = 0.98,
+  a_lw = 0.95,
   cp = eb_constants_$cp,
   sb = eb_constants_$sb
 )

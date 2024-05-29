@@ -13,7 +13,7 @@ gs_gbh_sensitivity(
   Ta = 293,
   Pa = 100,
   RH = 50,
-  a_lw = 0.98,
+  a_lw = 0.95,
   a_sw = 0.5
 )
 }

@@ -4,7 +4,7 @@
 \alias{net_nonisothermal_radiation}
 \title{Net radiation, but allowing for nonisothermal conditions.}
 \usage{
-net_nonisothermal_radiation(SW_abs, LW_abs_dn, Tl, a_lw = 0.98)
+net_nonisothermal_radiation(SW_abs, LW_abs_dn, Tl, a_lw = 0.95)
 }
 \arguments{
 \item{SW_abs}{Absorbed downwelling shortwave radiation (W/m2)}

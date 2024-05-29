@@ -9,7 +9,7 @@ net_isothermal_radiation(SW_abs, LW_abs_dn, Ta, a_lw)
 \arguments{
 \item{Ta}{Air temperature (K)}
 
-\item{a_lw}{Absorptivity of longwave radiation (0.98)}
+\item{a_lw}{Absorptivity of longwave radiation (0.95)}
 
 \item{SW_dir}{Direct downwelling shortwave radiation (W/m2)}
 

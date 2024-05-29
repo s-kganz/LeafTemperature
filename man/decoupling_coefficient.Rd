@@ -7,7 +7,7 @@ omega is near 0, boundary layer conductance is high and leaf temperature
 is well-coupled to air temperature. When omega is 1, boundary layer
 conductance is low and latent heat flux is radiation-limited.}
 \usage{
-decoupling_coefficient(gR, gbH, gs, d_esat, gamma, a_lw = 0.98)
+decoupling_coefficient(gR, gbH, gs, d_esat, gamma, a_lw = 0.95)
 }
 \arguments{
 \item{gR}{Conductance to radiative heat transfer (mol / m2 sec)}

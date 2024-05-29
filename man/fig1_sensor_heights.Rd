@@ -24,7 +24,7 @@ fig4_temp_forcing(eb_result)
 
 fig5_gs_gbh_sensitivity(grid_eb, eb_result)
 
-fig6_shade_gpp(shade_gpp)
+fig6_shade_gpp(shade_gpp, site_lai)
 
 fig_s1_lidar_fit(lidar_constants_df, iv_io_data, max_lai = 7)
 

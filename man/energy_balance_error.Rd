@@ -14,7 +14,7 @@ energy_balance_error(
   RH,
   SW_abs,
   LW_abs_dn,
-  a_lw = 0.98,
+  a_lw = 0.95,
   a_sw = 0.5,
   d = 0.01,
   aslist = FALSE
@@ -28,7 +28,7 @@ energy_balance_driver(
   RH,
   SW_abs,
   LW_abs_dn,
-  a_lw = 0.98,
+  a_lw = 0.95,
   a_sw = 0.5,
   d = 0.01,
   bounds = 20,
