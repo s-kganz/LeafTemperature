@@ -498,6 +498,7 @@ write_all_figures <- function(site_meta, search_dir, out_dir, overwrite=FALSE,
   
   medlyn_constants <- quiet_read(search_dir, "cross_site_medlyn_coefficients.csv") %>%
     mutate(site_neon = site_meta$site_neon[match(site, site_meta$site_ameriflux)]) %>%
+    select(-data) %>%
     drop_na()
   
   # AQ curve coefficients and fit

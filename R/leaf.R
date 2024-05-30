@@ -164,3 +164,16 @@ sensible_heat <- function(gbH, Tl, Ta) {
 medlyn_gs <- function(A, VPD, CO2, g1, g0=0) {
   g0 + (1 + g1 / sqrt(VPD)) * (A / CO2)
 }
+
+#' Generalization of Medlyn model of stomatal conductance from Li et al. (2019).
+#'
+#' @param VPD_l Ecosystem VPD (kPa, see reference)
+#' @param m VPD exponent parameter
+#'
+#' @return gs, stomatal conductance (mol m-2 s-1)
+#' @export
+#' @inheritParams medlyn_gs
+#'
+li_gs <- function(A, VPD_l, CO2, g1, g0=0, m=0.5) {
+  g0 + g1 * (VPD_l^-m) * (A / CO2)
+}

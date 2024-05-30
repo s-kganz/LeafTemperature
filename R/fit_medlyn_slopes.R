@@ -42,7 +42,7 @@ do_medlyn_fit <- function(tower, d, site, roughness_d, roughness_z0m, zr, zh) {
       TA_corr = TA + H / (rho * Ga_h * eb_constants_$cp),
       e_corr = e + (LE * gamma) / (rho * Ga_h * eb_constants_$cp),
       VPD_corr = saturation_vapor_pressure(TA_corr + 273.15) - e_corr,
-      CO2_corr = CO2 + NEE / Ga_h
+      CO2_corr = CO2 + NEE / Ga_h,
     ) %>%
     bind_cols(
       # Finally, calculate surface conductance!
@@ -61,6 +61,11 @@ do_medlyn_fit <- function(tower, d, site, roughness_d, roughness_z0m, zr, zh) {
     filter(
       # Discard NAs, negatives
       Gs_mol >= 0, !is.na(Gs_mol)
+    ) %>%
+    mutate(
+      # Use surface conductance to calculate ecosystem VPD. Use the m/s version
+      # of conductance so the units work out.
+      VPD_l = gamma * LE / (rho * eb_constants_$cp * Gs_ms)
     )
   
   # Fit Medlyn model ----
@@ -84,30 +89,49 @@ do_medlyn_fit <- function(tower, d, site, roughness_d, roughness_z0m, zr, zh) {
   # fit_v2 <- theil_sen_regression(Gs_mol ~ GPP_U50_f / (sqrt(VPD) * CO2), data=tower_gs)
   
   # V3: robustbase. This is the method used in Knauer et al. (2018) 
-  fit_v3 <- robustbase::nlrob(
-    Gs_mol ~ (1 + g1 / sqrt(VPD)) * (GPP_uStar_f / CO2),
+  # fit_v3 <- robustbase::nlrob(
+  #   Gs_mol ~ (1 + g1 / sqrt(VPD)) * (GPP_uStar_f / CO2),
+  #   data=tower_gs,
+  #   algorithm="port",
+  #   start=c(g1=3),
+  #   lower=c(g1=1),
+  #   upper=c(g1=10)
+  # )
+  
+  # V4: Generalization from Li et al. (2019)
+  fit_v4 <- robustbase::nlrob(
+    Gs_mol ~ g0 + g1 * (VPD_l^-m) * (GPP_uStar_f / CO2),
     data=tower_gs,
     algorithm="port",
-    start=c(g1=3),
-    lower=c(g1=1),
-    upper=c(g1=10)
+    start=c(g0=0, g1=3, m=0.5),
+    lower=c(g0=0, g1=1, m=0),
+    upper=c(g0=10, g1=10, m=2),
+    maxit=50
   )
   
-  message("Fit result")
-  message(coef(fit_v3))
+  fit_coef <- coef(fit_v4)
+  g0 <- fit_coef[1]
+  g1 <- fit_coef[2]
+  m  <- fit_coef[3]
   
-  tower_gs$Gs_mol_predicted <- medlyn_gs(
-    tower_gs$GPP_uStar_f, tower_gs$VPD, tower_gs$CO2, unname(coef(fit_v3))
+  message("Fit result")
+  message("g0: ", round(g0, digits=2))
+  message("g1: ", round(g1, digits=2))
+  message(" m: ", round( m, digits=2))
+  
+  tower_gs$Gs_mol_predicted <- li_gs(
+    tower_gs$GPP_uStar_f, tower_gs$VPD, tower_gs$CO2, g1, g0, m
   )
   tower_gs$site <- site
   
   list(site=site,
-       g0 = 0,
-       g1 = unname(coef(fit_v3)),
-       data = tower_gs)
+       g0=g0,
+       g1=g1,
+       m=m,
+       data=tower_gs)
 }
 
-neon_fit_medlyn <- function(site, tower, flux, zr, zh, L, rain_filter=3) {
+neon_fit_medlyn <- function(site, tower, flux, zr, zh, L, rain_filter=1) {
   message(paste("Now processing", flux$site[1]))
   # Select needed columns from tower ----
   
@@ -141,14 +165,17 @@ neon_fit_medlyn <- function(site, tower, flux, zr, zh, L, rain_filter=3) {
       TA = rowMeans(tower %>% select(matches(ta_regex)), na.rm = TRUE),
       CO2 = rowMeans(tower %>% select(matches(co2_regex)), na.rm = TRUE),
       G = rowMeans(tower %>% select(matches(g_regex)), na.rm = TRUE),
-      NETRAD = SW_IN + LW_IN - SW_OUT - LW_OUT,
+      # Don't calculate NETRAD here because we need LE to account
+      # for energy balance non-closure.
+      # NETRAD = SW_IN + LW_IN - SW_OUT - LW_OUT,
       VPD = vapor_pressure_deficit(TA + 273.15, RH)
     ) %>%
     rename(WS = WS_1_1_1) %>% drop_na()
   
   message(paste("Initial # observations:", nrow(tower_select)))
   
-  # Identify periods where T/ET is close to 1 ----
+  # Discard periods near rain so that ET does not include intercepted evap ----
+  # Li et al. (2019) did a 6-hour filter, so 24-hours is plenty conservative.
   no_precip <- tower_select %>%
     mutate(date = as.Date(TIMESTAMP)) %>%
     group_by(date) %>%
@@ -161,7 +188,7 @@ neon_fit_medlyn <- function(site, tower, flux, zr, zh, L, rain_filter=3) {
     # Drop night time data
     filter(SW_IN > 100)
   
-  message(paste("...after T/ET filtering", nrow(tower_transp_only)))
+  message(paste("...after rain filtering", nrow(tower_transp_only)))
   
   # Calculate roughness parameters ----
   roughness <- bigleaf::roughness.parameters(
@@ -179,7 +206,9 @@ neon_fit_medlyn <- function(site, tower, flux, zr, zh, L, rain_filter=3) {
   tower_transp_only_flux <- tower_transp_only %>%
     inner_join(flux, by = c("TIMESTAMP" = "timeBgn")) %>%
     rename(LE = data.fluxH2o.nsae.flux,
-           NEE = data.fluxCo2.nsae.flux)
+           NEE = data.fluxCo2.nsae.flux) %>%
+    # Set NETRAD = LE + H + G so that we guarantee energy balance closure
+    mutate(NETRAD = LE + H + G)
   
   message(paste("...after joining flux", nrow(tower_transp_only_flux)))
   
@@ -192,7 +221,7 @@ neon_fit_medlyn <- function(site, tower, flux, zr, zh, L, rain_filter=3) {
   }
 }
 
-neon_fit_driver <- function(site_meta, site_flux_qc, tower_dir, outdir, rain_filter=3) {
+neon_fit_driver <- function(site_meta, site_flux_qc, tower_dir, outdir, rain_filter=1) {
   flux <- site_flux_qc
   
   medlyn_fits <- lapply(1:nrow(site_meta), function(i) {
@@ -220,7 +249,7 @@ neon_fit_driver <- function(site_meta, site_flux_qc, tower_dir, outdir, rain_fil
   
   medlyn_data <- lapply(medlyn_fits, function(x) x$data)
   medlyn_df <- medlyn_data[!is.na(medlyn_data)] %>% bind_rows()
-  medlyn_coefs <- lapply(medlyn_fits, function(x) x[-4]) %>% bind_rows()
+  medlyn_coefs <- medlyn_fits %>% bind_rows() %>% select(-data)
   
   write_if_not_exist(
     medlyn_df, 

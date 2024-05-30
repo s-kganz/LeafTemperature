@@ -257,7 +257,7 @@ run_neon_energy_balance <- function(site_meta, site_lai, site_flux_qc,
     # Drop observations with missing data for getting stomatal conductance
     drop_na(c(MEDLYN_g1, LAYER_CO2, LAYER_H2O)) %>%
     # Calculate stomatal conductance in the layer
-    mutate(PS_LAYER_GS = medlyn_gs(PS_LAYER_GPP, LAYER_VPD, LAYER_CO2, MEDLYN_g1, MEDLYN_g0))
+    mutate(PS_LAYER_GS = li_gs(PS_LAYER_GPP, LAYER_VPD, LAYER_CO2, MEDLYN_g1, MEDLYN_g0, MEDLYN_m))
   
   # Run energy balance models ----
   message("Basic version...")
