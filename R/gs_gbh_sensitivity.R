@@ -73,7 +73,7 @@ energy_balance_conductance_driver <- function(Ta, gs, gbH, Pa, RH, SW_dn, LW_dn,
 #' @export
 #'
 gs_gbh_sensitivity <- function(outdir, 
-                               gs_min=0.01, gs_max=0.5, gbH_min=0.75, gbH_max=5,
+                               gs_min=0.01, gs_max=0.5, gbH_min=0.25, gbH_max=5,
                                Ta=293, Pa=100, RH=50, a_lw=0.95, a_sw=0.50) {
   # Set parameters ----
   gs_values <- seq(gs_min, gs_max, length.out=100)

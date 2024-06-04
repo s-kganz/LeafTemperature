@@ -8,7 +8,7 @@ gs_gbh_sensitivity(
   outdir,
   gs_min = 0.01,
   gs_max = 0.5,
-  gbH_min = 0.75,
+  gbH_min = 0.25,
   gbH_max = 5,
   Ta = 293,
   Pa = 100,
