@@ -64,6 +64,7 @@ run_analysis <-
       )
     
     skip <- (strsplit(skip, "")[[1]]) == "y"
+    stopifnot(length(skip) == length(steps))
     
     # Initial output
     message("Output directory: ", work_dir)
