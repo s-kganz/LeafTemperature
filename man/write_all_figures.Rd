@@ -15,7 +15,7 @@ write_all_figures(site_meta, search_dir, out_dir, overwrite = FALSE, ...)
 
 \item{overwrite}{If a figure already exists, should it be overwritten?}
 
-\item{...}{Arguments passed to \code{\link[ggplot2][theme]}. The default is \code{theme_bw} with a few font size changes.}
+\item{...}{Arguments passed to \code{\link[ggplot2]{theme}}. The default is \code{theme_bw} with a few font size changes.}
 }
 \value{
 Void, but all the figures get written to \code{out_dir}.

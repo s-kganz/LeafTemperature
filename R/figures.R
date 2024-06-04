@@ -193,7 +193,7 @@ fig3_regression_slopes <- function(eb_regressions) {
                hjust="left", vjust="top") +
     scale_fill_viridis_c() +
     scale_y_discrete(limits=rev) +
-    scale_x_continuous(limits=c(0.98, 1.15)) +
+    scale_x_continuous(limits=c(0.98, 1.17)) +
     facet_grid(SITE_NEON ~ .,
                scales="free_y", space="free") +
     theme(strip.placement="outside",
@@ -282,7 +282,7 @@ fig5_gs_gbh_sensitivity <- function(grid_eb, eb_result) {
                             binwidth=0.1) +
     # geom_contour(mapping=aes(x=gs, y=gbH, z=dT), color="black",
     #              binwidth=0.25) +
-    metR::scale_fill_divergent(guide=guide_colorbar(order=1)) +
+    metR::scale_fill_divergent(guide=guide_colorbar(order=1), limits=c(-3, 3)) +
     labs(fill=expression("T"[L]~"-"~"T"[A]~"(K)")) +
     # geom_label_contour(mapping=aes(x=gs, y=gbH, z=dT),
     #                    skip=0, label.placer=label_placer_fraction()) +
@@ -295,7 +295,7 @@ fig5_gs_gbh_sensitivity <- function(grid_eb, eb_result) {
                labeller=label_bquote(cols=LW[abs]*"+"*SW[abs]~"="~.(tot_rad)~"W m"^-2)) +
     #xlim(c(gs_min, gs_max)) + ylim(gbH_min, gbH_max) +
     scale_x_continuous(limits=c(0.01, 0.5), expand=c(0, 0)) +
-    scale_y_continuous(limits=c(0.75, 5.0), expand=c(0, 0)) +
+    scale_y_continuous(limits=c(0.25, 5.0), expand=c(0, 0)) +
     labs(x=expression("Stomatal conductance"~"(mol m"^-2~"s"^-1*")"),
          y=expression(atop("Boundary layer conductance", "(mol m"^-2~"s"^-1*")"))) +
     theme(strip.text = element_text(size=rel(0.8)),
@@ -455,7 +455,7 @@ quiet_read <- function(search_dir, filename, ...) {
 #' @param search_dir Directory the function will look in for data tables. This should be the same as `work_dir` in [run_analysis()].
 #' @param out_dir Output directory for all the figures.
 #' @param overwrite If a figure already exists, should it be overwritten?
-#' @param ... Arguments passed to \code{\link[ggplot2][theme]}. The default is `theme_bw` with a few font size changes.
+#' @param ... Arguments passed to \code{\link[ggplot2]{theme}}. The default is `theme_bw` with a few font size changes.
 #'
 #' @details
 #' This function calls all of the `fig*` functions in sequence. It takes care of reading the right tables to reproduce what you see in the manuscript.
@@ -498,7 +498,6 @@ write_all_figures <- function(site_meta, search_dir, out_dir, overwrite=FALSE,
   
   medlyn_constants <- quiet_read(search_dir, "cross_site_medlyn_coefficients.csv") %>%
     mutate(site_neon = site_meta$site_neon[match(site, site_meta$site_ameriflux)]) %>%
-    select(-data) %>%
     drop_na()
   
   # AQ curve coefficients and fit
