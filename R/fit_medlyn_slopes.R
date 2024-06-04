@@ -249,7 +249,7 @@ neon_fit_driver <- function(site_meta, site_flux_qc, tower_dir, outdir, rain_fil
   
   medlyn_data <- lapply(medlyn_fits, function(x) x$data)
   medlyn_df <- medlyn_data[!is.na(medlyn_data)] %>% bind_rows()
-  medlyn_coefs <- medlyn_fits %>% bind_rows() %>% select(-data)
+  medlyn_coefs <- medlyn_fits %>% bind_rows() %>% select(-data) %>% unique()
   
   write_if_not_exist(
     medlyn_df, 
