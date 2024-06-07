@@ -7,11 +7,14 @@
 \alias{fig4_temp_forcing}
 \alias{fig5_gs_gbh_sensitivity}
 \alias{fig6_shade_gpp}
+\alias{fig7_le_rn_flux}
 \alias{fig_s1_lidar_fit}
 \alias{fig_s2_medlyn_fit}
 \alias{fig_s3_aq_fit}
 \alias{fig_s4_rad_model_pairings}
 \alias{fig_s5_g1_sensitivity}
+\alias{fig_s6_omega_density}
+\alias{fig_s7_flux_boxplots}
 \title{Functions to generate manuscript figures}
 \usage{
 fig1_sensor_heights(sensor_heights, site_meta, tower_color = "grey50")
@@ -25,6 +28,8 @@ fig4_temp_forcing(eb_result)
 fig5_gs_gbh_sensitivity(grid_eb, eb_result)
 
 fig6_shade_gpp(shade_gpp, site_lai)
+
+fig7_le_rn_flux(eb_result)
 
 fig_s1_lidar_fit(lidar_constants_df, iv_io_data, max_lai = 7)
 
@@ -40,6 +45,10 @@ fig_s3_aq_fit(aq_constants, aq_data)
 fig_s4_rad_model_pairings(model_radiometer_crosswalk)
 
 fig_s5_g1_sensitivity(wref_g1_regressions)
+
+fig_s6_omega_density(eb_result)
+
+fig_s7_flux_boxplots(eb_result)
 }
 \arguments{
 \item{sensor_heights}{Table of Ameriflux sensor heights as returned by \code{\link[=amf_var_heights]{amf_var_heights()}}}

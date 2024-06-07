@@ -324,6 +324,46 @@ fig6_shade_gpp <- function(shade_gpp, site_lai) {
          y="Proportion shaded GPP")
 }
 
+#' @rdname fig1_sensor_heights
+#' @export
+fig7_le_rn_flux <- function(eb_result) {
+  classif <- eb_result %>%
+    mutate(EB_MODEL_dT = EB_MODEL_Tl - LAYER_TA - 273.15) %>%
+    filter(abs(EB_MODEL_dT) > 0.5) %>%
+    mutate(
+      temp_group = factor(ifelse(EB_MODEL_dT < 0, "cold", "hot"), levels=c("hot", "cold"))
+    )
+  
+  label_vec <- c(
+    "EB_MODEL_LE"="Latent heat (λE)",
+    "EB_MODEL_Rn"="Net radiation (Rn)"
+  )
+  
+  classif %>%
+    select(temp_group, EB_MODEL_Rn, EB_MODEL_LE) %>%
+    pivot_longer(contains("EB_MODEL")) %>%
+    ggplot(aes(x=value)) +
+    geom_density(aes(fill=temp_group, y=after_stat(scaled))) +
+    scale_fill_manual(
+      values=c("hot"="#fdb863", "cold"="#0571b0"),
+      labels=expression(Delta*"T >  0.5 K", Delta*"T < -0.5 K")
+    ) +
+    facet_wrap(~ name,
+               labeller=as_labeller(label_vec),
+               scales="free_x") +
+    labs(x=expression("Flux magnitude (W m"^-2*")"),
+         y="Relative density",
+         fill="") +
+    theme_bw() +
+    theme(axis.text.y = element_blank(),
+          axis.ticks.y = element_blank(),
+          legend.position="inside",
+          legend.justification.inside=c(.95,.9),
+          legend.title=element_blank(),
+          legend.background = element_rect(fill=NA))+
+    guides(fill=guide_legend(override.aes = list(alpha=1)))
+}
+
 
 # Supplemental figures ----
 
@@ -432,6 +472,57 @@ fig_s5_g1_sensitivity <- function(wref_g1_regressions) {
       ticks.colour="black",
       frame.colour="black"
     ))
+}
+
+#' @rdname fig1_sensor_heights
+#' @export
+fig_s6_omega_density <- function(eb_result) {
+  eb_result %>%
+    group_by(SITE_NEON) %>%
+    mutate(
+      canopy_group = case_when(
+        LAYER_L == max(LAYER_L) ~ "Lower",
+        LAYER_L == 0 ~ "Upper",
+        .default="Middle"
+      ),
+      canopy_group = factor(canopy_group, levels=c("Lower", "Middle", "Upper"))
+    ) %>%
+    ggplot(aes(x=EB_MODEL_omega, y=SITE_NEON)) +
+    #ggridges::geom_density_ridges(scale=1) +
+    # Include relative canopy position?
+    ggridges::geom_density_ridges(aes(fill=canopy_group), alpha=0.75, scale=0.9) +
+    xlim(0, 0.4) +
+    scale_y_discrete(limits=rev) +
+    labs(y="",
+         x=expression("Decoupling coefficient ("*Omega*")"),
+         fill="Canopy position")
+}
+
+#' @rdname fig1_sensor_heights
+#' @export
+fig_s7_flux_boxplots <- function(eb_result) {
+  eb_result %>%
+    select(SITE_NEON, LAYER_L, EB_MODEL_H, EB_MODEL_Rn, EB_MODEL_LE) %>%
+    group_by(SITE_NEON) %>%
+    rename(
+      "H"=EB_MODEL_H,
+      "Rn"=EB_MODEL_Rn,
+      "λE"=EB_MODEL_LE
+    ) %>%
+    mutate(
+      canopy_group = case_when(
+        LAYER_L == max(LAYER_L) ~ "Lower",
+        LAYER_L == 0 ~ "Upper",
+        .default="Middle"
+      ),
+      canopy_group = factor(canopy_group, levels=c("Lower", "Middle", "Upper"))
+    ) %>%
+    pivot_longer(all_of(c("H", "Rn", "λE")), names_to="flux", values_to="value") %>%
+    ggplot(aes(x=value, y=canopy_group)) +
+    geom_boxplot(aes(fill=flux), position="dodge") +
+    geom_vline(xintercept=0, linetype="dashed") +
+    facet_wrap(SITE_NEON ~ .) +
+    labs(x=expression("Flux magnitude"~"("*W~m^-2*")"), fill="", y="")
 }
 
 # Spit out all figures ----
@@ -576,6 +667,11 @@ write_all_figures <- function(site_meta, search_dir, out_dir, overwrite=FALSE,
             allow_overwrite=overwrite,
             width=4.5, height=3)
   
+  safe_save(file.path(out_dir, "fig7_le_rn_flux.png"),
+            fig7_le_rn_flux(eb_result),
+            allow_overwrite=overwrite,
+            width=4.5, height=2.5)
+  
   ### Supplemental ----
   safe_save(file.path(out_dir, "fig_s1_lidar_fit.png"),
             fig_s1_lidar_fit(lidar_constants_df, iv_io_data),
@@ -601,4 +697,14 @@ write_all_figures <- function(site_meta, search_dir, out_dir, overwrite=FALSE,
             fig_s5_g1_sensitivity(wref_g1_regressions),
             allow_overwrite=overwrite,
             width=8, height=6)
+  
+  safe_save(file.path(out_dir, "fig_s6_omega_density.png"),
+            fig_s6_omega_density(eb_result),
+            allow_overwrite=overwrite,
+            width=4.5, height=3)
+  
+  safe_save(file.path(out_dir, "fig_s7_flux_boxplots.png"),
+            fig_s7_flux_boxplots(eb_result),
+            allow_overwrite=overwrite,
+            width=7.5, height=6)
 }
