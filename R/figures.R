@@ -558,6 +558,8 @@ quiet_read <- function(search_dir, filename, ...) {
 write_all_figures <- function(site_meta, search_dir, out_dir, overwrite=FALSE,
                               ...) {
   message("Writing figures to ", out_dir)
+  if (!dir.exists(out_dir))
+    dir.create(out_dir)
   # Set ggplot theme ----
   default_theme <- theme_bw()
   
