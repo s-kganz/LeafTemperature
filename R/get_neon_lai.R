@@ -74,8 +74,8 @@ calculate_dhp_lai_manual <- function(url, verbose=FALSE, ...) {
     cat("Current thresh:", thresh, "\n")
     dhp_bw <- hemispheR::binarize_fisheye(dhp, manual=thresh, display=FALSE)
     
-    plot(dhp, col=grey.colors(50), main="Original")
-    plot(dhp_bw, col=grey.colors(2), main="Thresholded")
+    terra::plot(dhp, col=grey.colors(50), main="Original")
+    terra::plot(dhp_bw, col=grey.colors(2), main="Thresholded")
     
     inp <- readline("[A]ccept, [R]eject, or input new value: ")
     
@@ -118,11 +118,11 @@ manual_dhp_lai_driver <- function(site_meta, outdir, token) {
     filter(year >= 2019) %>%
     group_by(siteID) %>%
     # Sample at least 10 images from each site
-    slice_sample(min(10, n()))
+    slice_sample(n = 10)
   
   write_if_not_exist(
     dhp_table, 
-    file.path(outdir, neon_sampled_dhp_images.csv)
+    file.path(outdir, "neon_sampled_dhp_images.csv")
   )
   
   neon_lai_list <- lapply(
