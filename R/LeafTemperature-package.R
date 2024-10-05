@@ -37,11 +37,18 @@ NULL
 #' @name manual_lai_images
 #' @docType data
 #' @description
-#' We used a random sample of NEON DHPs to calculate leaf area index in each of our study sites. `manual_lai_images` documents what that random sample was for reproducibility, and `manual_lai` records the median LAI we calculated at each site using the `hemispheR` package. See `get_neon_lai.R` for more information.
+#' Initially, we used a random sample of NEON DHPs to calculate leaf area index in each of our study sites. Due to large variance in the results, we decided to use the MODIS LAI product instead. These data document our initial attempt with DHPs. `manual_lai_images` documents what the random DHP sample was for reproducibility, and `dhp_lai` records the median LAI we calculated at each site using the `hemispheR` package. See `get_neon_lai.R` for more information.
 #' 
 NULL
 
-#' @name manual_lai
+#' @name dhp_lai
 #' @rdname manual_lai_images
 #' 
+NULL
+
+#' @title MODIS leaf area index table
+#' @name modis_lai
+#' @docType data
+#' @description
+#' Due to large variation in DHP-derived LAI, we decided to use LAI from MODIS. The process for generating these data was as follows. First, we used AppEARS to derive a point sample of all 8-day 500-m MODIS LAI images from May - September, 2018 - 2022. This request is documented under appears_request in the package directory (or under inst, if you are looking on GitHub). Then, we subset the AppEARS request to those observations where the QC band was zero and calculated site LAI as the 95th percentile of the LAI band. This procedure resulted in better agreement with literature values for LAI than the DHP method, which guided our decision.
 NULL
