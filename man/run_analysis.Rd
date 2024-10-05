@@ -30,7 +30,7 @@ run_analysis(
 Re-run leaf temperature modeling pipeline
 }
 \details{
-This function re-runs the leaf temperature modeling pipeline we describe in the manuscript. It begins by downloading ~2 GB of data to your machine from Ameriflux and NEON. If you run the whole thing, you should expect it to take 2-3 hours. Most of that time is just downloading data, the actual modeling part takes just a few minutes. We have done our best to make the code robust, but ti is always possible that the analysis breaks halfway through. If that happens, you can adjust the \code{skip} parameter to ignore the steps that have already completed.
+This function re-runs the leaf temperature modeling pipeline we describe in the manuscript. It begins by downloading ~2 GB of data to your machine from Ameriflux and NEON. If you run the whole thing, you should expect it to take 2-3 hours. Most of that time is just downloading data, the actual modeling part takes just a few minutes. We have done our best to make the code robust, but it is always possible that the analysis breaks halfway through. If that happens, you can adjust the \code{skip} parameter to ignore the steps that have already completed.
 
 The skip parameter is an 11-character string. If the i-th character is 'y', then the i-th analysis step is skipped. If a step is skipped, it is assumed that the relevant data has already been written to \code{work_dir} with the expected filename. The order of steps is as follows:
 \enumerate{
