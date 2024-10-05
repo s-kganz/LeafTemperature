@@ -3,8 +3,8 @@
 \docType{data}
 \name{manual_lai_images}
 \alias{manual_lai_images}
-\alias{manual_lai}
+\alias{dhp_lai}
 \title{Site leaf area index tables}
 \description{
-We used a random sample of NEON DHPs to calculate leaf area index in each of our study sites. \code{manual_lai_images} documents what that random sample was for reproducibility, and \code{manual_lai} records the median LAI we calculated at each site using the \code{hemispheR} package. See \code{get_neon_lai.R} for more information.
+Initially, we used a random sample of NEON DHPs to calculate leaf area index in each of our study sites. Due to large variance in the results, we decided to use the MODIS LAI product instead. These data document our initial attempt with DHPs. \code{manual_lai_images} documents what the random DHP sample was for reproducibility, and \code{dhp_lai} records the median LAI we calculated at each site using the \code{hemispheR} package. See \code{get_neon_lai.R} for more information.
 }

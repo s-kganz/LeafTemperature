@@ -16,7 +16,7 @@ skipping <- function(msg) {
 #' @param skip 11-character string describing whether you want to skip certain analysis steps. This can be useful if you hit an error halfway through and want to skip all the steps that succeeded initially.
 #'
 #' @details
-#' This function re-runs the leaf temperature modeling pipeline we describe in the manuscript. It begins by downloading ~2 GB of data to your machine from Ameriflux and NEON. If you run the whole thing, you should expect it to take 2-3 hours. Most of that time is just downloading data, the actual modeling part takes just a few minutes. We have done our best to make the code robust, but ti is always possible that the analysis breaks halfway through. If that happens, you can adjust the `skip` parameter to ignore the steps that have already completed.
+#' This function re-runs the leaf temperature modeling pipeline we describe in the manuscript. It begins by downloading ~2 GB of data to your machine from Ameriflux and NEON. If you run the whole thing, you should expect it to take 2-3 hours. Most of that time is just downloading data, the actual modeling part takes just a few minutes. We have done our best to make the code robust, but it is always possible that the analysis breaks halfway through. If that happens, you can adjust the `skip` parameter to ignore the steps that have already completed.
 #'
 #' The skip parameter is an 11-character string. If the i-th character is 'y', then the i-th analysis step is skipped. If a step is skipped, it is assumed that the relevant data has already been written to `work_dir` with the expected filename. The order of steps is as follows:
 #'  \enumerate{
@@ -91,7 +91,7 @@ run_analysis <-
     # Load site metadata and LAI. Technically this isn't necessary but just FYI
     # these are included with the package.
     data("site_meta")
-    data("manual_lai")
+    data("modis_lai")
     
     # Download all the data we need
     if (!skip[1]) {
@@ -118,7 +118,7 @@ run_analysis <-
     # Fit lidar constants
     if (!skip[4]) {
       starting(steps[4])
-      fit_neon_lidar_k(site_meta, manual_lai, tower_dir, lidar_dir, work_dir)
+      fit_neon_lidar_k(site_meta, modis_lai, tower_dir, lidar_dir, work_dir)
     }
     else
       skipping(steps[4])
@@ -143,7 +143,7 @@ run_analysis <-
     if (!skip[6]) {
       starting(steps[6])
       get_within_canopy_meteorology(site_meta,
-                                    manual_lai,
+                                    modis_lai,
                                     lad_profiles,
                                     partition_flux,
                                     work_dir)
@@ -163,7 +163,7 @@ run_analysis <-
       # Fit Medlyn slopes
       if (!skip[8]) {
         starting(steps[8])
-        fit_medlyn_slopes(site_meta, manual_lai, partition_flux,
+        fit_medlyn_slopes(site_meta, modis_lai, partition_flux,
                           tower_dir, work_dir)
       }
       else
@@ -189,7 +189,7 @@ run_analysis <-
         starting(steps[9])
         run_neon_energy_balance(
           site_meta,
-          manual_lai,
+          modis_lai,
           partition_flux,
           aq_constants,
           medlyn_constants,
