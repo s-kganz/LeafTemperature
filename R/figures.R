@@ -193,7 +193,7 @@ fig3_regression_slopes <- function(eb_regressions) {
                hjust="left", vjust="top") +
     scale_fill_viridis_c() +
     scale_y_discrete(limits=rev) +
-    scale_x_continuous(limits=c(0.98, 1.17)) +
+    scale_x_continuous(limits=c(0.98, 1.20)) +
     facet_grid(SITE_NEON ~ .,
                scales="free_y", space="free") +
     theme(strip.placement="outside",
@@ -317,7 +317,7 @@ fig6_shade_gpp <- function(shade_gpp, site_lai) {
     ggplot(aes(x=LAI, y=prop_gpp_shade)) +
     geom_hline(yintercept=0.552, color="red", linetype="dashed") +
     geom_point() +
-    ggrepel::geom_label_repel(aes(label=SITE_NEON), force_pull=2) +
+    ggrepel::geom_label_repel(aes(label=SITE_NEON)) +
     ylim(0, 0.6) +
     xlim(0, NA) +
     labs(x="Site leaf area index",
@@ -343,7 +343,8 @@ fig7_le_rn_flux <- function(eb_result) {
     select(temp_group, EB_MODEL_Rn, EB_MODEL_LE) %>%
     pivot_longer(contains("EB_MODEL")) %>%
     ggplot(aes(x=value)) +
-    geom_density(aes(fill=temp_group, y=after_stat(scaled))) +
+    # Remove black border
+    geom_density(aes(fill=temp_group, y=after_stat(scaled)), color=NA) +
     scale_fill_manual(
       values=c("hot"="#fdb863", "cold"="#0571b0"),
       labels=expression(Delta*"T >  0.5 K", Delta*"T < -0.5 K")
@@ -491,7 +492,7 @@ fig_s6_omega_density <- function(eb_result) {
     #ggridges::geom_density_ridges(scale=1) +
     # Include relative canopy position?
     ggridges::geom_density_ridges(aes(fill=canopy_group), alpha=0.75, scale=0.9) +
-    xlim(0, 0.4) +
+    xlim(0, 0.5) +
     scale_y_discrete(limits=rev) +
     labs(y="",
          x=expression("Decoupling coefficient ("*Omega*")"),
