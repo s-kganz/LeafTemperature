@@ -176,9 +176,9 @@ absorbed_downwelling_longwave_radiation <- function(Ta, l, L,
       (1 - ef) * (1 - exp(-kd * l)) * (ef - (ef - es) * exp(-kd * (L - l)))
   )
   
-  # Multiplying by 2 here because longwave radiation is diffuse and radiated
-  # in all directions. So, the underside of leaves also receives this flux.
-  LW_abs_dn <- 2 * eb_constants_$sb * e_down * Ta^4 * ef
+  # In an earlier version, this flux was doubled. Based on reviewer comments
+  # we removed the factor of 2.
+  LW_abs_dn <- eb_constants_$sb * e_down * Ta^4 * ef
   
   if (aslist) {
     return(list(
@@ -203,7 +203,10 @@ absorbed_downwelling_longwave_radiation <- function(Ta, l, L,
 #'
 #' 
 outgoing_longwave_radiation <- function(Tl, ef=0.95) {
-  2 * ef * eb_constants_$sb * Tl^4
+  # In an earlier version, this flux was doubled to reflect an outgoing
+  # flux on both sides of the leaf. Based on reviewer comments this
+  # factor was removed.
+  ef * eb_constants_$sb * Tl^4
 }
 
 if (sys.nframe() == 0) {

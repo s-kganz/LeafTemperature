@@ -80,7 +80,10 @@ gs_gbh_sensitivity <- function(outdir,
   gbH_values <- seq(gbH_min, gbH_max, length.out=100)
   # Generally shortwave is about 1/3 of the absorbed radiation load
   # in the canopy top.
-  tot_rad <- c(800, 1000, 1200)
+  # These values were updated on revision to reflect the change in how longwave
+  # radiation was calculated.
+  # tot_rad <- c(800, 1000, 1200)
+  tot_rad <- c(400, 600, 800)
   
   grid <- expand.grid(gs_values, gbH_values, tot_rad) %>%
     rename(
