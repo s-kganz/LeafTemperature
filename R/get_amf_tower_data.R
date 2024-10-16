@@ -53,7 +53,7 @@ get_amf_tower_data <- function(site_meta, outdir, user, email) {
       # Drop extra timekeeping cols
       select(-TIMESTAMP_START, -TIMESTAMP_END, -YEAR, -MONTH, -DAY, -DOY, -HOUR, -MINUTE) %>%
       # Filter observations to prior to 2022 for reproducibility
-      filter(year(TIMESTAMP) < 2022) %>%
+      filter(year(TIMESTAMP) <= 2022) %>%
       write_if_not_exist(
         file.path(outdir, "amf_tower_data", paste0(this_site, ".csv"))
       )

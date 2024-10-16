@@ -67,7 +67,7 @@ get_neon_flux_long <- function(site_meta, token, outdir) {
     this_site <- product_avail$siteCode[i]
     this_months <- product_avail$getMonths[[i]]
     # Drop site-months before 2022 for reproducibility
-    before_2022 <- which(parse_number(str_split_i(this_months, "-", 1)) < 2022)
+    before_2022 <- which(parse_number(str_split_i(this_months, "-", 1)) <= 2022)
     this_months <- this_months[before_2022]
 
     message(paste(
