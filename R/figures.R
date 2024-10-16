@@ -26,6 +26,15 @@ fig_site_map <- function(site_meta) {
     theme_void()
 }
 
+# Labelling local time better
+hour_labeller <- function(lab) {
+  str_c(
+    formatC(lab, width=2, flag="0", format="d"),
+    ":00"
+  )
+}
+
+
 #' Functions to generate manuscript figures
 #'
 #' @param sensor_heights Table of Ameriflux sensor heights as returned by [amf_var_heights()]
@@ -69,7 +78,7 @@ fig1_sensor_heights <- function(sensor_heights, site_meta, tower_color="grey50")
     select(-Variable) %>%
     distinct() %>%
     # Drop radiometers below the canopy
-    filter(vartype != "Radiometer" | Height > 2)
+    filter(vartype != "Radiometer" | Height >= 2)
   
   # Attach filepath of the tree svgs to metadata table
   site_meta_filepath <- site_meta %>%
@@ -329,7 +338,7 @@ fig6_shade_gpp <- function(shade_gpp, site_lai) {
 fig7_le_rn_flux <- function(eb_result) {
   classif <- eb_result %>%
     mutate(EB_MODEL_dT = EB_MODEL_Tl - LAYER_TA - 273.15) %>%
-    filter(abs(EB_MODEL_dT) > 0.5) %>%
+    filter(abs(EB_MODEL_dT) > 0.25) %>%
     mutate(
       temp_group = factor(ifelse(EB_MODEL_dT < 0, "cold", "hot"), levels=c("hot", "cold"))
     )
@@ -347,7 +356,7 @@ fig7_le_rn_flux <- function(eb_result) {
     geom_density(aes(fill=temp_group, y=after_stat(scaled)), color=NA) +
     scale_fill_manual(
       values=c("hot"="#fdb863", "cold"="#0571b0"),
-      labels=expression(Delta*"T >  0.5 K", Delta*"T < -0.5 K")
+      labels=expression(Delta*"T >  0.25 K", Delta*"T < -0.25 K")
     ) +
     facet_wrap(~ name,
                labeller=as_labeller(label_vec),
@@ -364,7 +373,6 @@ fig7_le_rn_flux <- function(eb_result) {
           legend.background = element_rect(fill=NA))+
     guides(fill=guide_legend(override.aes = list(alpha=1)))
 }
-
 
 # Supplemental figures ----
 
@@ -524,6 +532,78 @@ fig_s7_flux_boxplots <- function(eb_result) {
     geom_vline(xintercept=0, linetype="dashed") +
     facet_wrap(SITE_NEON ~ .) +
     labs(x=expression("Flux magnitude"~"("*W~m^-2*")"), fill="", y="")
+}
+
+#' @rdname fig1_sensor_heights
+#' @export
+fig_s8_diurnal_beta <- function(eb_result, site_meta) {
+  eb_result <- eb_result %>%
+    left_join(
+      site_meta %>% select(site_ameriflux, utc_offset),
+      by=c("SITE_AMF"="site_ameriflux")) %>%
+    mutate(TIMESTAMP_LOCAL = TIMESTAMP + hours(utc_offset))
+  
+  get_lmodel2_slope <- function(x, y) {
+    m <- suppressMessages(lmodel2(y ~ x))
+    data.frame(
+      p025=m$confidence.intervals[3, 4],
+      p500=m$regression.results[3, 3],
+      p975=m$confidence.intervals[3, 5]
+    )
+  }
+  
+  beta_by_hour <- eb_result %>%
+    group_by(SITE_NEON) %>%
+    mutate(
+      layer = case_when(
+        LAYER_L == max(LAYER_L) ~ "Lower",
+        LAYER_L == 0 ~ "Upper",
+        .default="Middle"
+      ),
+      canopy_group = factor(layer, levels=c("Lower", "Middle", "Upper"))
+    ) %>%
+    mutate(hour = hour(TIMESTAMP_LOCAL)) %>%
+    group_by(SITE_NEON, layer, hour) %>%
+    filter(n() > 10) %>%
+    do(get_lmodel2_slope(.$LAYER_TA, .$EB_MODEL_Tl-273.15))
+  
+  p <- ggplot(beta_by_hour, aes(x=hour)) +
+    geom_errorbar(aes(ymin=p025, ymax=p975)) +
+    geom_point(aes(color=layer, y=p500)) +
+    scale_x_continuous(
+      labels=hour_labeller,
+      breaks=seq(6, 18, by=6)
+    ) +
+    facet_wrap(~ SITE_NEON) +
+    labs(x="Local time",
+         y=expression("T"[L]~"on"~"T"[A]~"regression slope ("*degree*C*"/"*degree*C*")"),
+         color="") +
+    theme(legend.direction = "horizontal")
+  
+  reposition_legend(p, "center", panel=c("panel-3-2", "panel-3-3"))
+}
+
+#' @rdname fig1_sensor_heights
+#' @export
+fig_s9_cold_leaf_count <- function(eb_result, site_meta) {
+  eb_result %>%
+    left_join(site_meta %>% select(site_ameriflux, utc_offset),
+              by=c("SITE_AMF"="site_ameriflux")) %>%
+    mutate(TIMESTAMP_LOCAL = TIMESTAMP + hours(utc_offset)) %>%
+    mutate(hour = hour(TIMESTAMP_LOCAL), 
+           month=month(TIMESTAMP, label=TRUE, abbr=TRUE),
+           iscold=EB_MODEL_Tl-LAYER_TA-273.15 < 0) %>%
+    group_by(hour, month) %>%
+    summarize(n = sum(iscold)) %>%
+    ggplot(aes(x=hour, y=month, fill=n)) +
+    geom_tile() +
+    scale_x_continuous(labels = hour_labeller, breaks=seq(4, 20, by=4),
+                       na.value="gray", expand=c(0, 0)) +
+    scale_y_discrete(expand=c(0, 0), limits=rev) +
+    scale_fill_viridis_c() +
+    labs(x="Local time", y="", fill="Count") +
+    theme(panel.background=element_rect(fill="gray", color="gray"),
+          panel.grid=element_blank())
 }
 
 # Spit out all figures ----
@@ -710,4 +790,14 @@ write_all_figures <- function(site_meta, search_dir, out_dir, overwrite=FALSE,
             fig_s7_flux_boxplots(eb_result),
             allow_overwrite=overwrite,
             width=7.5, height=6)
+  
+  safe_save(file.path(out_dir, "fig_s8_diurnal_beta.png"),
+            fig_s8_diurnal_beta(eb_result, site_meta),
+            allow_overwrite=overwrite,
+            width=5, height=4.5)
+  
+  safe_save(file.path(out_dir, "fig_s9_cold_leaf_count.png"),
+            fig_s9_cold_leaf_count(eb_result, site_meta),
+            allow_overwrite=overwrite,
+            width=6, height=2)
 }
