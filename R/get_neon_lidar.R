@@ -41,7 +41,7 @@ get_neon_lidar <- function(site_meta, outdir) {
     utm_y <- utm_coord[1, 2]
     
     # Download files to a tempdir
-    tdir <- tempdir()
+    tdir <- file.path(tempdir(), site_id)
     
     neonUtilities::byTileAOP(
       product,
