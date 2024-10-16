@@ -103,6 +103,7 @@ do_medlyn_fit <- function(tower, d, site, roughness_d, roughness_z0m, zr, zh) {
     Gs_mol ~ g0 + g1 * (VPD_l^-m) * (GPP_uStar_f / CO2),
     data=tower_gs,
     algorithm="port",
+    method="MM",
     start=c(g0=0, g1=3, m=0.5),
     lower=c(g0=0, g1=1, m=0),
     upper=c(g0=10, g1=10, m=2),
@@ -189,6 +190,10 @@ neon_fit_medlyn <- function(site, tower, flux, zr, zh, L, rain_filter=1) {
     filter(SW_IN > 100)
   
   message(paste("...after rain filtering", nrow(tower_transp_only)))
+  if (nrow(tower_transp_only) < 20) {
+    message("Too few observations! Returning NA...")
+    return(list(site=site, g0=NA, g1=NA, data=NA))
+  }
   
   # Calculate roughness parameters ----
   roughness <- bigleaf::roughness.parameters(
@@ -212,7 +217,7 @@ neon_fit_medlyn <- function(site, tower, flux, zr, zh, L, rain_filter=1) {
   
   message(paste("...after joining flux", nrow(tower_transp_only_flux)))
   
-  if (nrow(tower_transp_only_flux) < 50) {
+  if (nrow(tower_transp_only_flux) < 20) {
     message("Too few observations! Returning NA...")
     return(list(site=site, g0=NA, g1=NA, data=NA))
   } else {
