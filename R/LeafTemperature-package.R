@@ -3,6 +3,7 @@
 
 ## usethis namespace: start
 #' @importFrom amerifluxr amf_filter_base
+#' @importFrom bigleaf potential.ET
 #' @importFrom foreach %do%
 #' @importFrom foreach foreach
 #' @importFrom ggnewscale new_scale_fill
@@ -12,6 +13,8 @@
 #' @importFrom gridExtra grid.arrange
 #' @importFrom gtable gtable_add_grob
 #' @importFrom lemon reposition_legend
+#' @importFrom lme4 anova.merMod
+#' @importFrom lme4 lmer
 #' @importFrom purrr map
 #' @importFrom purrr map_dbl
 #' @importFrom purrr pmap

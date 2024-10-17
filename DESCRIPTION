@@ -43,5 +43,6 @@ Imports:
     grid,
     sf,
     tigris,
-    gtable
+    gtable,
+    lme4
 LazyData: true

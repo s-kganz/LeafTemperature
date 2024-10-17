@@ -606,6 +606,30 @@ fig_s9_cold_leaf_count <- function(eb_result, site_meta) {
           panel.grid=element_blank())
 }
 
+fig_s10_aet_dt <- function(eb_result, site_meta) {
+  eb_result %>%
+    left_join(site_meta %>% select(site_ameriflux, utc_offset),
+              by=c("SITE_AMF"="site_ameriflux")) %>%
+    mutate(TIMESTAMP_LOCAL = TIMESTAMP + hours(utc_offset),
+           EB_MODEL_dT = EB_MODEL_Tl - 273.15 - LAYER_TA) %>%
+    filter(hour(TIMESTAMP_LOCAL) %in% 10:14) %>%
+    mutate(TS_DATE = as.Date(TIMESTAMP_LOCAL)) %>%
+    group_by(SITE_NEON, TS_DATE) %>%
+    summarize(daily_et_frac = sum(RAD_ACTUAL_ET) / sum(RAD_POT_ET),
+              daily_dT = mean(EB_MODEL_dT)) %>%
+    filter(daily_et_frac <= 1) %>%
+    ggplot(aes(x=daily_et_frac, y=daily_dT)) +
+    geom_point() +
+    geom_smooth(aes(group=SITE_NEON), method="lm",
+                color="red", linetype="dashed",
+                formula="y ~ log(x+1)") +
+    xlim(0, 1) +
+    theme_bw() +
+    labs(x="Actual ET / Potential ET", y="Leaf-air T difference (K)",
+         color="") +
+    facet_wrap(~ SITE_NEON)
+}
+
 # Spit out all figures ----
 # Helper function to prevent overwrites
 safe_save <- function(filename, plot, allow_overwrite=FALSE, ...) {
@@ -800,4 +824,9 @@ write_all_figures <- function(site_meta, search_dir, out_dir, overwrite=FALSE,
             fig_s9_cold_leaf_count(eb_result, site_meta),
             allow_overwrite=overwrite,
             width=6, height=2)
+  
+  safe_save(file.path(out_dir, "fig_s10_aet_dt.png"),
+            fig_s10_aet_dt(eb_result, site_meta),
+            allow_overwrite=overwrite,
+            width=8, height=6)
 }

@@ -46,7 +46,7 @@ run_neon_energy_balance <- function(site_meta, site_lai, site_flux_qc,
     mutate(
       lai_best = ifelse(is.na(lai), mod_lai, lai)
     ) %>%
-    select(site_neon, site_ameriflux, tower_lat, tower_lon, lai_best) %>%
+    select(site_neon, site_ameriflux, tower_lat, tower_lon, lai_best, utc_offset) %>%
     rename(
       SITE_NEON=site_neon,
       SITE_AMF=site_ameriflux,
@@ -136,7 +136,7 @@ run_neon_energy_balance <- function(site_meta, site_lai, site_flux_qc,
   
   # Join constants with flux table ----
   flux_constants <- flux %>%
-    inner_join(site_meta, by="SITE_NEON") %>%
+    inner_join(site_meta %>% select(-utc_offset), by="SITE_NEON") %>%
     inner_join(aq_constants, by="SITE_NEON") %>%
     inner_join(medlyn_constants, by="SITE_AMF") %>%
     inner_join(lidar_constants, by="SITE_NEON")
@@ -196,6 +196,7 @@ run_neon_energy_balance <- function(site_meta, site_lai, site_flux_qc,
   #   theme_bw()
   
   # Run radiation submodel ----
+  # Also do the AET/PET calculation here
   flux_rad_model <- flux_layer_l %>%
     mutate(
       RAD_SKY_EMIS = RAD_TOC_LW_IN / (eb_constants_$sb * (RAD_TOC_TA+273.15)^4),
@@ -222,7 +223,17 @@ run_neon_energy_balance <- function(site_meta, site_lai, site_flux_qc,
         ef=0.95,
         es=0.9,
         kd=-LIDAR_kd_black
-      )
+      ),
+      NETRAD = RAD_TOC_LW_IN + RAD_TOC_SW_IN - RAD_TOC_LW_OUT - RAD_TOC_SW_OUT
+    ) %>%
+    mutate(
+      RAD_POT_ET = potential.ET(
+        data=.,
+        Tair=.$RAD_TOC_TA,
+        pressure=.$RAD_TOC_PA,
+        Rn=.$NETRAD
+      )$ET_pot,
+      RAD_ACTUAL_ET = TOC_LE/eb_constants_$l_kg,
     )
   
   # Run photosynthesis submodel ----
@@ -386,7 +397,32 @@ run_neon_energy_balance <- function(site_meta, site_lai, site_flux_qc,
               prop_gpp_sunlit = tot_gpp_sunlit / tot_gpp,
               prop_gpp_shade = tot_gpp_shade / tot_gpp)
   
+  # Mixed effects models
+  # Calculate the daily average dT and AET/PET
+  eb_daily_summary <- flux_eb_result %>%
+    left_join(site_meta %>% select(SITE_AMF, utc_offset),
+              by=c("SITE_AMF")) %>%
+    mutate(TIMESTAMP_LOCAL = TIMESTAMP + hours(utc_offset),
+           EB_MODEL_dT = EB_MODEL_Tl - 273.15 - LAYER_TA) %>%
+    filter(hour(TIMESTAMP_LOCAL) %in% 10:14) %>%
+    mutate(TS_DATE = as.Date(TIMESTAMP_LOCAL)) %>%
+    group_by(SITE_NEON, TS_DATE) %>%
+    summarize(daily_et_frac = sum(RAD_ACTUAL_ET) / sum(RAD_POT_ET),
+              daily_Tl = mean(EB_MODEL_Tl),
+              daily_Ta = mean(RAD_TOC_TA)) %>%
+    filter(daily_et_frac <= 1)
+  
+  base_lmer  <- lmer(daily_Tl ~ (daily_Ta - 1| SITE_NEON), data=eb_daily_summary)
+  intxn_lmer <- lmer(daily_Tl ~ (daily_Ta + daily_Ta:daily_et_frac - 1| SITE_NEON), data=eb_daily_summary)
+  lrt <- anova(base_lmer, intxn_lmer)
+  
+  
   # Save results ----
+  
+  save(base_lmer, file=file.path(outdir, "base_lmer.mermod"))
+  save(intxn_lmer, file=file.path(outdir, "intxn_lmer.mermod"))
+  save(lrt, file=file.path(outdir, "lmer_lrt"))
+  
   write_if_not_exist(
     flux_eb_result, 
     file.path(outdir, "cross_site_eb.csv")
