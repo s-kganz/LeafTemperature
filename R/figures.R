@@ -445,7 +445,7 @@ fig_s3_aq_fit <- function(aq_constants, aq_data) {
     geom_point(mapping=aes(x=.Qabs, y=.A), data=aq_data, alpha=0.1) +
     geom_line(mapping=aes(x=Q, y=A, color="Fit"), data=fit_pred, lwd=1, show.legend = FALSE) +
     facet_wrap(~ site, scales="free_y") +
-    labs(x=expression("Top-of-canopy shortwave (W m"^2*")"),
+    labs(x=expression("Top-of-canopy shortwave (W m"^-2*")"),
          y=expression("Canopy GPP ("*mu*"mol CO"[2]~"m"^-2~s^-1*")"),
          color="")
 }
@@ -621,8 +621,7 @@ fig_s10_aet_dt <- function(eb_result, site_meta) {
     ggplot(aes(x=daily_et_frac, y=daily_dT)) +
     geom_point() +
     geom_smooth(aes(group=SITE_NEON), method="lm",
-                color="red", linetype="dashed",
-                formula="y ~ log(x+1)") +
+                color="red", linetype="dashed") +
     xlim(0, 1) +
     theme_bw() +
     labs(x="Actual ET / Potential ET", y="Leaf-air T difference (K)",
