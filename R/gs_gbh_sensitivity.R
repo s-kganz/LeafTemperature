@@ -18,8 +18,8 @@ energy_balance_conductance_error <- function(Tl, Ta, gs, gbH, Pa, RH,
   desat   <- esat_slope(Ta)
   
   # Conductances - don't need to calculate gbH since that is provided
-  gR    <- conductance_radiative_heat(Ta, Pa, rho, rho_mol, a_lw, 
-                                      eb_constants_$cp)
+  gR    <- conductance_radiative_heat(Ta, rho, rho_mol, a_lw, 
+                                      eb_constants_$cp, eb_constants_$sb)
   gtot  <- total_conductance(gs, gbH)
   
   # Net radiation - here we don't consider canopy effects, so assume

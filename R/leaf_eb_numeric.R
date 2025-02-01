@@ -35,8 +35,8 @@ energy_balance_error <- function(Tl, Ta, u, gs, Pa, RH,
   
   # Conductances
   gbH   <- conductance_boundary_heat_needleleaf(u, d, rho_mol)
-  gR    <- conductance_radiative_heat(Ta, Pa, rho, rho_mol, a_lw, 
-                                      eb_constants_$cp)
+  gR    <- conductance_radiative_heat(Ta, rho, rho_mol, a_lw, 
+                                      eb_constants_$cp, eb_constants_$sb)
   gtot  <- total_conductance(gs, gbH)
   
   # Net radiation

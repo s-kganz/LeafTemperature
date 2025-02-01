@@ -202,7 +202,7 @@ fig3_regression_slopes <- function(eb_regressions) {
                hjust="left", vjust="top") +
     scale_fill_viridis_c() +
     scale_y_discrete(limits=rev) +
-    scale_x_continuous(limits=c(0.92, 1.20)) +
+    scale_x_continuous(limits=c(0.98, 1.20)) +
     facet_grid(SITE_NEON ~ .,
                scales="free_y", space="free") +
     theme(strip.placement="outside",
