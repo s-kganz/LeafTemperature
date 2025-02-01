@@ -1,18 +1,21 @@
 # Functions describing leaf physiology and transpiration for energy balance
 # models.
 
-#' Leaf conductance to radiative heat transfer.
+#' Leaf conductance to radiative heat transfer. Note that the output is in
+#' molar units here for compatability with other functions.
 #'
 #' @param Ta Air temperature (K)
-#' @param Pa Air pressure (kPa)
-#' @param a_lw Longwave absorptance
-#' @param cp Heat capacity of dry air
+#' @param a_lw Longwave absorptance (-)
+#' @param cp Heat capacity of dry air (J / kg K)
+#' @param rho Mass density of dry air (kg / m^3)
+#' @param rho_mol Molar density of dry air (mol / m^3)
+#' @param sb Stefan-Boltzmann constant (W m-2 K-4)
 #'
-#' @return gR, leaf conductance to radiative heat transfer (m/sec)
+#' @return gR, leaf conductance to radiative heat transfer (mol / m2 sec)
 #' @keywords internal
 #'
 #' 
-conductance_radiative_heat <- function(Ta, Pa, rho, rho_mol, 
+conductance_radiative_heat <- function(Ta, rho, rho_mol, 
                                        a_lw=0.95,
                                        cp=eb_constants_$cp,
                                        sb=eb_constants_$sb) {
@@ -137,7 +140,7 @@ latent_heat <- function(omega, le_eq, le_imp) {
 #' Sensible heat flux between a leaf and its boundary layer. Flux is multiplied
 #' by 2 since both sides of leaf participate in heat transfer.
 #'
-#' @param gbH Leaf boundary layer conductance to heat transfer
+#' @param gbH Leaf boundary layer conductance to heat transfer (mol / m2 sec)
 #' @param Tl Leaf temperature (K)
 #' @param Ta Air temperature (K)
 #'

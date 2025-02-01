@@ -2,11 +2,11 @@
 % Please edit documentation in R/leaf.R
 \name{conductance_radiative_heat}
 \alias{conductance_radiative_heat}
-\title{Leaf conductance to radiative heat transfer.}
+\title{Leaf conductance to radiative heat transfer. Note that the output is in
+molar units here for compatability with other functions.}
 \usage{
 conductance_radiative_heat(
   Ta,
-  Pa,
   rho,
   rho_mol,
   a_lw = 0.95,
@@ -17,16 +17,21 @@ conductance_radiative_heat(
 \arguments{
 \item{Ta}{Air temperature (K)}
 
-\item{Pa}{Air pressure (kPa)}
+\item{rho}{Mass density of dry air (kg / m^3)}
 
-\item{a_lw}{Longwave absorptance}
+\item{rho_mol}{Molar density of dry air (mol / m^3)}
 
-\item{cp}{Heat capacity of dry air}
+\item{a_lw}{Longwave absorptance (-)}
+
+\item{cp}{Heat capacity of dry air (J / kg K)}
+
+\item{sb}{Stefan-Boltzmann constant (W m-2 K-4)}
 }
 \value{
-gR, leaf conductance to radiative heat transfer (m/sec)
+gR, leaf conductance to radiative heat transfer (mol / m2 sec)
 }
 \description{
-Leaf conductance to radiative heat transfer.
+Leaf conductance to radiative heat transfer. Note that the output is in
+molar units here for compatability with other functions.
 }
 \keyword{internal}

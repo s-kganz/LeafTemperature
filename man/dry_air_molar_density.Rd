@@ -9,7 +9,7 @@ dry_air_molar_density(Ta, Pa, cp = eb_constants_$cp, M = eb_constants_$Mair)
 \arguments{
 \item{Ta}{Air temperature (K)}
 
-\item{Pa}{Air pressure (Pa)}
+\item{Pa}{Air pressure (kPa)}
 
 \item{cp}{Heat capacity of dry air (J/kg K)}
 

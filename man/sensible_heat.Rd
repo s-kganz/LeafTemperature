@@ -8,7 +8,7 @@ by 2 since both sides of leaf participate in heat transfer.}
 sensible_heat(gbH, Tl, Ta)
 }
 \arguments{
-\item{gbH}{Leaf boundary layer conductance to heat transfer}
+\item{gbH}{Leaf boundary layer conductance to heat transfer (mol / m2 sec)}
 
 \item{Tl}{Leaf temperature (K)}
 

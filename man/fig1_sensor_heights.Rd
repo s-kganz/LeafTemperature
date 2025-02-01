@@ -15,6 +15,8 @@
 \alias{fig_s5_g1_sensitivity}
 \alias{fig_s6_omega_density}
 \alias{fig_s7_flux_boxplots}
+\alias{fig_s8_diurnal_beta}
+\alias{fig_s9_cold_leaf_count}
 \title{Functions to generate manuscript figures}
 \usage{
 fig1_sensor_heights(sensor_heights, site_meta, tower_color = "grey50")
@@ -49,6 +51,10 @@ fig_s5_g1_sensitivity(wref_g1_regressions)
 fig_s6_omega_density(eb_result)
 
 fig_s7_flux_boxplots(eb_result)
+
+fig_s8_diurnal_beta(eb_result, site_meta)
+
+fig_s9_cold_leaf_count(eb_result, site_meta)
 }
 \arguments{
 \item{sensor_heights}{Table of Ameriflux sensor heights as returned by \code{\link[=amf_var_heights]{amf_var_heights()}}}

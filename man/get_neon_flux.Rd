@@ -17,11 +17,11 @@ get_neon_flux_simple(outdir)
 \item{outdir}{Directory to write stacked flux tables.}
 }
 \description{
-There are two version of this function: \code{get_neon_flux_long()} and \code{get_neon_flux_simple()}. Due to cross-platform issues with file manipulation, the final flux table lives in a Google Cloud bucket. \code{get_neon_flux_long()} will try to download everything to your machine for the sake of reproducibility. \code{get_neon_flux_simple()} just downloads the final CSV. ¯\\emph{(ツ)}/¯
+There are two version of this function: \code{get_neon_flux_long()} and \code{get_neon_flux_simple()}. Due to cross-platform issues with file manipulation, the final flux table lives in a Google Cloud bucket. \code{get_neon_flux_long()} will try to download everything to your machine for the sake of reproducibility. \code{get_neon_flux_simple()} just downloads the final CSV. ¯\\\emph{(ツ)}/¯
 
 This function downloads eddy covariance data from NEON, stacks the level 4 NSAE data and QC flags, and then writes that to a CSV in \code{outdir}. For growing season data only, this downloads about 60 GB total, but uses <500 MB on disk at any one time by deleting intermediate files. This is suboptimal, but is currently recommended for large flux downloads (see \href{https://github.com/NEONScience/NEON-utilities/issues/131}{this github issue}).
 
-The function will try to delete intermediate folders generated during the stacking process. But, deleting files does not work cons
+The function will try to delete intermediate folders generated during the stacking process. But, deleting files does not work consistently across operating systems.
 
 For reproducibility with the manuscript, this script also excludes any flux products after 2021.
 }

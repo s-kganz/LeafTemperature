@@ -22,7 +22,7 @@ dry_air_density <- function(Ta, Pa,
 #' Molar density of dry air.
 #'
 #' @param Ta Air temperature (K)
-#' @param Pa Air pressure (Pa)
+#' @param Pa Air pressure (kPa)
 #' @param cp Heat capacity of dry air (J/kg K)
 #' @param M Molar mass of dry air (kg/mol)
 #'
